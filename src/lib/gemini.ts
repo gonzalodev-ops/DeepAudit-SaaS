@@ -42,7 +42,17 @@ interface AuditResult {
   token_usage?: TokenUsage
 }
 
-function calculateCost(inputTokens: number, outputTokens: number): number {
+function calculateCost(inputTokens: number, outputTokens: number, totalTokens?: number): number {
+  // Si Gemini reporta un total mayor, usamos ese para el costo (tokens de audio, sistema, etc.)
+  // El costo se calcula asumiendo proporción similar input/output sobre el total real
+  if (totalTokens && totalTokens > (inputTokens + outputTokens)) {
+    const ratio = inputTokens / (inputTokens + outputTokens || 1)
+    const adjustedInput = Math.round(totalTokens * ratio)
+    const adjustedOutput = totalTokens - adjustedInput
+    const inputCost = (adjustedInput / 1_000_000) * GEMINI_PRICING.inputPerMillionTokens
+    const outputCost = (adjustedOutput / 1_000_000) * GEMINI_PRICING.outputPerMillionTokens
+    return Number((inputCost + outputCost).toFixed(6))
+  }
   const inputCost = (inputTokens / 1_000_000) * GEMINI_PRICING.inputPerMillionTokens
   const outputCost = (outputTokens / 1_000_000) * GEMINI_PRICING.outputPerMillionTokens
   return Number((inputCost + outputCost).toFixed(6))
@@ -201,7 +211,7 @@ export async function processAudioWithGemini(
     const inputTokens = usageMetadata?.promptTokenCount || 0
     const outputTokens = usageMetadata?.candidatesTokenCount || 0
     const totalTokens = usageMetadata?.totalTokenCount || (inputTokens + outputTokens)
-    const costUsd = calculateCost(inputTokens, outputTokens)
+    const costUsd = calculateCost(inputTokens, outputTokens, totalTokens)
 
     const tokenUsage: TokenUsage = {
       inputTokens,
