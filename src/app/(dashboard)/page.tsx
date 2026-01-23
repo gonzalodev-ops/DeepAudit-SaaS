@@ -69,7 +69,7 @@ async function getStats() {
   let costForMinuteCalc = 0
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   audits.forEach((audit: any) => {
-    const duration = durationMap.get(audit.call_id)
+    const duration = durationMap.get(audit.call_id) as number | undefined
     if (duration && audit.cost_usd) {
       totalMinutes += duration / 60
       costForMinuteCalc += audit.cost_usd
