@@ -234,7 +234,7 @@ export default async function CallDetailPage({ params }: PageProps) {
               {/* Audio Player with Key Moments */}
               {call.audio_url && (
                 <AudioPlayer
-                  audioUrl={call.audio_url}
+                  callId={call.id}
                   keyMoments={audit.key_moments || []}
                   duration={call.duration_seconds || undefined}
                 />
@@ -270,6 +270,12 @@ export default async function CallDetailPage({ params }: PageProps) {
                         </p>
                         <p className="text-lg font-medium text-emerald-600">
                           ${audit.cost_usd?.toFixed(4) || '0.0000'} USD
+                        </p>
+                        <p className="text-sm text-emerald-600">
+                          ${((audit.cost_usd || 0) * 20).toFixed(2)} MXN
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          TC: $20 MXN = $1 USD
                         </p>
                       </div>
                     </div>

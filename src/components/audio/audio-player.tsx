@@ -4,7 +4,7 @@ import { useRef, useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Slider } from '@/components/ui/slider'
-import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX } from 'lucide-react'
+import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, AlertCircle, Loader2 } from 'lucide-react'
 
 interface KeyMoment {
   timestamp: string
@@ -14,7 +14,7 @@ interface KeyMoment {
 }
 
 interface AudioPlayerProps {
-  audioUrl: string
+  callId: string
   keyMoments?: KeyMoment[]
   duration?: number
 }
@@ -35,13 +35,37 @@ function formatTime(seconds: number): string {
   return `${mins}:${secs.toString().padStart(2, '0')}`
 }
 
-export function AudioPlayer({ audioUrl, keyMoments = [], duration }: AudioPlayerProps) {
+export function AudioPlayer({ callId, keyMoments = [], duration }: AudioPlayerProps) {
   const audioRef = useRef<HTMLAudioElement>(null)
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const [audioDuration, setAudioDuration] = useState(duration || 0)
   const [volume, setVolume] = useState(1)
   const [isMuted, setIsMuted] = useState(false)
+  const [audioUrl, setAudioUrl] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  // Fetch signed URL on mount
+  useEffect(() => {
+    async function fetchAudioUrl() {
+      try {
+        setIsLoading(true)
+        setError(null)
+        const response = await fetch(`/api/calls/${callId}/audio`)
+        if (!response.ok) {
+          throw new Error('No se pudo cargar el audio')
+        }
+        const data = await response.json()
+        setAudioUrl(data.url)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Error al cargar audio')
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    fetchAudioUrl()
+  }, [callId])
 
   useEffect(() => {
     const audio = audioRef.current
@@ -50,17 +74,20 @@ export function AudioPlayer({ audioUrl, keyMoments = [], duration }: AudioPlayer
     const handleTimeUpdate = () => setCurrentTime(audio.currentTime)
     const handleLoadedMetadata = () => setAudioDuration(audio.duration)
     const handleEnded = () => setIsPlaying(false)
+    const handleError = () => setError('Error al reproducir el audio')
 
     audio.addEventListener('timeupdate', handleTimeUpdate)
     audio.addEventListener('loadedmetadata', handleLoadedMetadata)
     audio.addEventListener('ended', handleEnded)
+    audio.addEventListener('error', handleError)
 
     return () => {
       audio.removeEventListener('timeupdate', handleTimeUpdate)
       audio.removeEventListener('loadedmetadata', handleLoadedMetadata)
       audio.removeEventListener('ended', handleEnded)
+      audio.removeEventListener('error', handleError)
     }
-  }, [])
+  }, [audioUrl])
 
   const togglePlay = () => {
     const audio = audioRef.current
@@ -128,6 +155,42 @@ export function AudioPlayer({ audioUrl, keyMoments = [], duration }: AudioPlayer
     return audioDuration > 0 ? (seconds / audioDuration) * 100 : 0
   }
 
+  // Show loading state
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Volume2 className="h-4 w-4" />
+            Reproductor de Audio
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="flex items-center justify-center py-8">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          <span className="ml-2 text-muted-foreground">Cargando audio...</span>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  // Show error state
+  if (error || !audioUrl) {
+    return (
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Volume2 className="h-4 w-4" />
+            Reproductor de Audio
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="flex items-center justify-center py-8 text-muted-foreground">
+          <AlertCircle className="h-5 w-5 mr-2 text-destructive" />
+          <span>{error || 'Audio no disponible'}</span>
+        </CardContent>
+      </Card>
+    )
+  }
+
   return (
     <Card>
       <CardHeader className="pb-3">
@@ -137,7 +200,7 @@ export function AudioPlayer({ audioUrl, keyMoments = [], duration }: AudioPlayer
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <audio ref={audioRef} src={audioUrl} preload="metadata" />
+        <audio ref={audioRef} src={audioUrl} preload="metadata" crossOrigin="anonymous" />
 
         {/* Progress bar with markers */}
         <div className="relative">

@@ -12,8 +12,14 @@ const QA_CONFIG = {
   hoursPerMonth: 160, // 40 horas/semana * 4 semanas
 }
 
-// Tipo de cambio aproximado
-const MXN_TO_USD = 0.058
+// Tipo de cambio: $20 MXN = $1 USD
+const USD_TO_MXN = 20
+const MXN_TO_USD = 1 / USD_TO_MXN // 0.05
+
+// Helper to format numbers consistently (avoids hydration mismatch)
+function formatNumber(num: number): string {
+  return num.toLocaleString('en-US')
+}
 
 interface CostComparisonCardProps {
   totalCostUSD: number
@@ -33,8 +39,8 @@ export function CostComparisonCard({
   const qaCostPerCallMXN = QA_CONFIG.monthlySalaryMXN / qaCallsPerMonth
 
   // Costo IA en MXN
-  const totalCostMXN = totalCostUSD / MXN_TO_USD
-  const avgCostPerCallMXN = avgCostPerCall / MXN_TO_USD
+  const totalCostMXN = totalCostUSD * USD_TO_MXN
+  const avgCostPerCallMXN = avgCostPerCall * USD_TO_MXN
 
   // Ahorro
   const savingsPerCall = qaCostPerCallUSD - avgCostPerCall
@@ -78,6 +84,7 @@ export function CostComparisonCard({
                     (${totalCostMXN.toFixed(2)} MXN)
                   </span>
                 </p>
+                <p className="text-xs text-muted-foreground">TC: $20 MXN = $1 USD</p>
               </div>
 
               <div>
@@ -93,7 +100,7 @@ export function CostComparisonCard({
               <div>
                 <p className="text-sm text-muted-foreground">Capacidad con presupuesto QA</p>
                 <p className="text-lg font-semibold text-emerald-600">
-                  ~{iaCallsWithQABudget.toLocaleString()} llamadas/mes
+                  ~{formatNumber(iaCallsWithQABudget)} llamadas/mes
                 </p>
               </div>
             </div>
@@ -112,7 +119,7 @@ export function CostComparisonCard({
                 <p className="text-xl font-bold">
                   ${qaMonthlyCostUSD.toFixed(0)} USD
                   <span className="text-sm font-normal text-muted-foreground ml-2">
-                    (${QA_CONFIG.monthlySalaryMXN.toLocaleString()} MXN)
+                    (${formatNumber(QA_CONFIG.monthlySalaryMXN)} MXN)
                   </span>
                 </p>
               </div>

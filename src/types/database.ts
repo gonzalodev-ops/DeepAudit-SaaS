@@ -18,6 +18,7 @@ export interface Database {
           manual_url: string | null
           manual_text: string | null
           audit_criteria: AuditCriterion[]
+          default_processing_mode: 'full' | 'compliance' | null
           created_at: string
           updated_at: string
         }
@@ -29,6 +30,7 @@ export interface Database {
           manual_url?: string | null
           manual_text?: string | null
           audit_criteria?: AuditCriterion[]
+          default_processing_mode?: 'full' | 'compliance' | null
           created_at?: string
           updated_at?: string
         }
@@ -40,6 +42,7 @@ export interface Database {
           manual_url?: string | null
           manual_text?: string | null
           audit_criteria?: AuditCriterion[]
+          default_processing_mode?: 'full' | 'compliance' | null
           created_at?: string
           updated_at?: string
         }

@@ -1,15 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { processAudioWithGemini, ProcessingMode } from '@/lib/gemini'
+import { DEMO_TENANT_ID, DEMO_USER_ID } from '@/lib/constants'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
-
-const DEMO_TENANT_ID = '00000000-0000-0000-0000-000000000001'
-const DEMO_USER_ID = '00000000-0000-0000-0000-000000000002'
-
-// Default processing mode - can be configured per tenant
-const DEFAULT_PROCESSING_MODE: ProcessingMode = 'full'
 
 export async function POST(request: NextRequest) {
   try {
@@ -35,10 +30,10 @@ export async function POST(request: NextRequest) {
 
     const supabase = await createServiceClient()
 
-    // Get tenant audit criteria and manual
+    // Get tenant audit criteria, manual, and default processing mode
     const { data: tenant } = await supabase
       .from('tenants')
-      .select('audit_criteria, manual_text')
+      .select('audit_criteria, manual_text, default_processing_mode')
       .eq('id', DEMO_TENANT_ID)
       .single()
 
@@ -84,8 +79,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to create call record' }, { status: 500 })
     }
 
-    // Get processing mode from request or use default
-    const processingMode = (formData.get('mode') as ProcessingMode) || DEFAULT_PROCESSING_MODE
+    // Get processing mode from request, tenant default, or fallback to 'full'
+    const requestMode = formData.get('mode') as ProcessingMode | null
+    const tenantDefaultMode = tenant?.default_processing_mode as ProcessingMode | null
+    const processingMode: ProcessingMode = requestMode || tenantDefaultMode || 'full'
 
     // Process with Gemini (async but we wait for it)
     try {
