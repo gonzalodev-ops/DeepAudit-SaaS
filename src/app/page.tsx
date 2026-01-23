@@ -5,6 +5,9 @@ import { Phone, CheckCircle, Clock, TrendingUp, DollarSign } from 'lucide-react'
 import { createServiceClient } from '@/lib/supabase/server'
 import { CallsTable } from '@/components/calls/calls-table'
 
+// Force dynamic rendering - requires database connection at runtime
+export const dynamic = 'force-dynamic'
+
 // Costo estimado por llamada basado en Gemini 2.5 Flash
 // ~10,500 tokens promedio por llamada
 // Input: $0.15/1M tokens, Output: $0.60/1M tokens (cacheable)

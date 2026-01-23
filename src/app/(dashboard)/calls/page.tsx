@@ -6,6 +6,9 @@ import { Button } from '@/components/ui/button'
 import { CallsTable } from '@/components/calls/calls-table'
 import { Upload } from 'lucide-react'
 
+// Force dynamic rendering - requires database connection at runtime
+export const dynamic = 'force-dynamic'
+
 async function getCalls() {
   const supabase = await createServiceClient()
 
