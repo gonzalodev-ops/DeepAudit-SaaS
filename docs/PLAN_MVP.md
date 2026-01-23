@@ -73,10 +73,18 @@
 8. Modo Compliance - Sin transcripcion para regulaciones
 9. Boton Regenerar - Para casos criticos
 
+### Sesion 2024-01-23 (COMPLETADOS)
+- [x] Fix audio player - usar signed URLs para bucket privado
+- [x] Filtros en dashboard (status, fecha, score)
+- [x] Pagina /settings para configurar tenant
+- [x] Costos en MXN con nota de tipo de cambio (TC: $20)
+- [x] Dashboard reorganizado: 4 KPIs + costos consolidados + comparativa QA
+- [x] Nuevo CostsSummaryCard con overhead 30% (storage, hosting, bandwidth)
+- [x] Costo por minuto calculado desde duraciones reales
+- [x] Fix hydration error (toLocaleString con locale fijo)
+
 ### PENDIENTES para completar MVP
-- [ ] Autenticacion con Supabase Auth
-- [ ] Filtros en dashboard (por score, fecha)
-- [ ] Pagina /settings para configurar tenant
+- [ ] Autenticacion con Supabase Auth (login/signup)
 
 ---
 
@@ -93,9 +101,16 @@
 | Metrica | QA Humano | DeepAudit IA |
 |---------|-----------|--------------|
 | Costo mensual | $30,000 MXN | Variable |
-| Costo por llamada | ~$37.50 MXN | ~$0.05 MXN |
+| Costo por llamada | ~$37.50 MXN | ~$0.08 MXN (con 30% overhead) |
+| Costo por minuto | N/A | ~$0.04 MXN |
 | Capacidad mensual | ~800 llamadas | Ilimitado |
-| Ahorro | - | ~99.9% |
+| Ahorro | - | ~99.8% |
+
+**Nota:** El costo de IA incluye +30% overhead conservador para cubrir:
+- Storage (~5MB por audio, 3 meses retención)
+- Hosting (Cloud Run/Vercel)
+- Base de datos (Supabase)
+- Bandwidth
 
 ---
 
