@@ -5,6 +5,9 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { CallsTable } from '@/components/calls/calls-table'
 import { CostComparisonCard } from '@/components/dashboard/cost-comparison-card'
 
+// Force dynamic rendering - requires database connection at runtime
+export const dynamic = 'force-dynamic'
+
 // Costo estimado por defecto si no hay datos reales
 const DEFAULT_COST_PER_CALL_USD = 0.002
 

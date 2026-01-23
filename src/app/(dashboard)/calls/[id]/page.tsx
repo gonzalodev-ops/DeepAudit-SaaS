@@ -27,6 +27,9 @@ import { es } from 'date-fns/locale'
 import { AudioPlayer } from '@/components/audio/audio-player'
 import { RegenerateButton } from '@/components/audit/regenerate-button'
 
+// Force dynamic rendering - requires database connection at runtime
+export const dynamic = 'force-dynamic'
+
 interface PageProps {
   params: Promise<{ id: string }>
 }
