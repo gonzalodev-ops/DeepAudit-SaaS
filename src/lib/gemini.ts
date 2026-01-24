@@ -72,10 +72,10 @@ function buildPrompt(
 ): string {
   const criteriaDescription = criteria.length > 0
     ? criteria.map(c => `- ${c.name} (Peso: ${c.weight}%): ${c.description}`).join('\n')
-    : `- Respeto y Cortesia (25%): Trato digno y profesional
-- Cumplimiento de Protocolo (20%): Identificacion y procedimientos
-- Resolucion del Problema (25%): Atencion efectiva
-- Cierre Profesional (15%): Despedida cordial`
+    : `- Respeto y Cortesia (29%): Trato digno y profesional
+- Cumplimiento de Protocolo (24%): Identificacion y procedimientos
+- Resolucion del Problema (29%): Atencion efectiva
+- Cierre Profesional (18%): Despedida cordial`
 
   const manualContext = manualText
     ? `\n\nMANUAL DE CALIDAD DE LA EMPRESA:\n${manualText}\n`
