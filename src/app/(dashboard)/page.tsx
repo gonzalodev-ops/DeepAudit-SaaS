@@ -71,8 +71,8 @@ async function getStats() {
   let costForMinuteCalc = 0
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   audits.forEach((audit: any) => {
-    const duration = durationMap.get(audit.call_id)
-    if (duration && audit.cost_usd) {
+    const duration = durationMap.get(audit.call_id) as number | undefined
+    if (duration && typeof duration === 'number' && audit.cost_usd) {
       totalMinutes += duration / 60
       costForMinuteCalc += audit.cost_usd
     }
@@ -171,6 +171,29 @@ async function getRecentCalls(filters: CallFilters) {
       const minOk = filters.scoreMin === undefined || score >= filters.scoreMin
       const maxOk = filters.scoreMax === undefined || score <= filters.scoreMax
       return minOk && maxOk
+    })
+  }
+
+  // Apply keyword filter (search in transcript and legal_risk_reasons)
+  if (filters.keyword && filters.keyword.trim()) {
+    const keyword = filters.keyword.toLowerCase().trim()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    result = result.filter((call: any) => {
+      if (!call.audit) return false
+
+      // Search in transcript
+      const transcript = (call.audit.transcript || '').toLowerCase()
+      if (transcript.includes(keyword)) return true
+
+      // Search in legal_risk_reasons
+      const legalReasons = call.audit.legal_risk_reasons || []
+      if (legalReasons.some((reason: string) => reason.toLowerCase().includes(keyword))) return true
+
+      // Search in summary
+      const summary = (call.audit.summary || '').toLowerCase()
+      if (summary.includes(keyword)) return true
+
+      return false
     })
   }
 

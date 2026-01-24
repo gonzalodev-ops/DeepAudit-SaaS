@@ -1,9 +1,10 @@
 'use client'
 
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,8 +13,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu'
-import { ChevronDown, X } from 'lucide-react'
-import { CallFilters, CallStatus, ScoreRange, DateRange } from '@/types/filters'
+import { ChevronDown, X, Search, AlertTriangle } from 'lucide-react'
+import { CallFilters, CallStatus, ScoreRange, DateRange, LEGAL_KEYWORDS } from '@/types/filters'
 import {
   parseFiltersFromParams,
   serializeFiltersToParams,
@@ -23,6 +24,7 @@ import {
   scoreRangeToFilters,
   dateRangeToFilters,
 } from '@/lib/filters'
+import { isEnterpriseMode } from '@/lib/feature-flags'
 
 const STATUS_LABELS: Record<CallStatus, string> = {
   pending: 'Pendiente',
@@ -48,11 +50,15 @@ const DATE_RANGE_LABELS: Record<DateRange, string> = {
 export function CallsFilters() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const enterpriseMode = isEnterpriseMode()
 
   // Parse current filters from URL
   const currentFilters = parseFiltersFromParams(
     Object.fromEntries(searchParams.entries())
   )
+
+  // Local state for keyword input
+  const [keywordInput, setKeywordInput] = useState(currentFilters.keyword || '')
 
   const currentScoreRange = getScoreRangeFromFilters(currentFilters)
   const currentDateRange = getDateRangeFromFilters(currentFilters)
@@ -126,8 +132,42 @@ export function CallsFilters() {
 
   // Clear all filters
   const handleClearFilters = useCallback(() => {
+    setKeywordInput('')
     router.push('/', { scroll: false })
-  }, [router])
+  }, [router, setKeywordInput])
+
+  // Handle keyword change (search in transcript and legal_risk_reasons)
+  const handleKeywordChange = useCallback(
+    (keyword: string) => {
+      setKeywordInput(keyword)
+      const newFilters: CallFilters = {
+        ...currentFilters,
+        keyword: keyword.trim() || undefined,
+      }
+      if (!keyword.trim()) delete newFilters.keyword
+      updateFilters(newFilters)
+    },
+    [currentFilters, updateFilters, setKeywordInput]
+  )
+
+  // Handle keyword submit (on Enter key)
+  const handleKeywordSubmit = useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === 'Enter') {
+        handleKeywordChange(keywordInput)
+      }
+    },
+    [handleKeywordChange, keywordInput]
+  )
+
+  // Handle preset keyword click
+  const handlePresetKeyword = useCallback(
+    (keyword: string) => {
+      setKeywordInput(keyword)
+      handleKeywordChange(keyword)
+    },
+    [handleKeywordChange, setKeywordInput]
+  )
 
   // Get status count for label
   const statusCount = currentFilters.status?.length || 0
@@ -225,6 +265,56 @@ export function CallsFilters() {
           ))}
         </DropdownMenuContent>
       </DropdownMenu>
+
+      {/* Keyword Filter - Enterprise Only */}
+      {enterpriseMode && (
+        <>
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="text"
+                placeholder="Buscar keyword..."
+                value={keywordInput}
+                onChange={(e) => setKeywordInput(e.target.value)}
+                onKeyDown={handleKeywordSubmit}
+                onBlur={() => handleKeywordChange(keywordInput)}
+                className="h-8 w-40 pl-8 text-sm"
+              />
+            </div>
+          </div>
+
+          {/* Preset Legal Keywords */}
+          <div className="flex items-center gap-1">
+            <AlertTriangle className="h-4 w-4 text-orange-500" />
+            {LEGAL_KEYWORDS.map((keyword) => (
+              <Button
+                key={keyword}
+                variant={currentFilters.keyword === keyword ? 'default' : 'outline'}
+                size="sm"
+                className="h-7 text-xs"
+                onClick={() => handlePresetKeyword(keyword)}
+              >
+                {keyword}
+              </Button>
+            ))}
+          </div>
+
+          {/* Active keyword badge */}
+          {currentFilters.keyword && (
+            <Badge variant="secondary" className="h-7 gap-1">
+              <Search className="h-3 w-3" />
+              {currentFilters.keyword}
+              <button
+                onClick={() => handleKeywordChange('')}
+                className="ml-1 hover:text-destructive"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </Badge>
+          )}
+        </>
+      )}
 
       {/* Clear Filters */}
       {showClearButton && (
