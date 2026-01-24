@@ -19,7 +19,7 @@ const baseNavigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
   { name: 'Llamadas', href: '/calls', icon: Phone },
   { name: 'Subir Audio', href: '/upload', icon: Upload },
-  { name: 'Reportes', href: '/reports', icon: BarChart3 },
+  { name: 'Reportes', href: '/reportes', icon: BarChart3 },
   { name: 'Configuracion', href: '/settings', icon: Settings },
 ]
 

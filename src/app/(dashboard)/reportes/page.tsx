@@ -3,11 +3,28 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { DEMO_TENANT_ID } from '@/lib/constants'
 import { isEnterpriseMode } from '@/lib/feature-flags'
 import { UnitEconomicsCard } from '@/components/enterprise/unit-economics-card'
+import { PricingCalculator } from '@/components/enterprise/pricing-calculator'
 import { CostsSummaryCard } from '@/components/dashboard/costs-summary-card'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { BarChart3, TrendingUp, PieChart } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
+
+interface AuditWithCalls {
+  overall_score: number | null
+  cost_usd: number | null
+  total_tokens: number | null
+  input_tokens: number | null
+  output_tokens: number | null
+  call_id: string
+  legal_risk_level: string | null
+  call_outcome: string | null
+  calls: {
+    tenant_id: string
+    duration_seconds: number | null
+    status: string
+  } | null
+}
 
 async function getReportStats() {
   const supabase = await createServiceClient()
@@ -28,7 +45,7 @@ async function getReportStats() {
     `)
     .eq('calls.tenant_id', DEMO_TENANT_ID)
 
-  const completedAudits = audits?.filter(a => a.calls?.status === 'completed') || []
+  const completedAudits = (audits as AuditWithCalls[] | null)?.filter(a => a.calls?.status === 'completed') || []
 
   // Calcular métricas de costos
   const costs = completedAudits
@@ -109,6 +126,9 @@ export default async function ReportesPage() {
 
         {/* Unit Economics - Solo en modo Enterprise */}
         {isEnterprise && <UnitEconomicsCard />}
+
+        {/* Calculadora de Margen - Solo en modo Enterprise */}
+        {isEnterprise && <PricingCalculator />}
 
         {/* Métricas adicionales en Enterprise */}
         {isEnterprise && (
