@@ -93,16 +93,27 @@ async function getStats() {
   }
 }
 
-// Obtener estadisticas Enterprise (alertas criticas y clientes retenidos)
-async function getEnterpriseStats(): Promise<{ criticalAlerts: number; highRiskAlerts: number; mediumRiskAlerts: number; retainedClients: number }> {
+// Obtener estadisticas Enterprise (alertas criticas, clientes retenidos, y distribuciones)
+async function getEnterpriseStats(): Promise<{
+  criticalAlerts: number
+  highRiskAlerts: number
+  mediumRiskAlerts: number
+  retainedClients: number
+  riskDistribution: { critical: number; high: number; medium: number; safe: number }
+  outcomeDistribution: { retained: number; churned: number; escalated: number; pending: number }
+}> {
   const supabase = await createServiceClient()
 
-  // Obtener conteo de alertas por nivel de riesgo legal
-  const [criticalResult, highResult, mediumResult, retainedResult] = await Promise.all([
+  // Obtener conteo de alertas por nivel de riesgo legal y outcomes
+  const [criticalResult, highResult, mediumResult, safeResult, retainedResult, churnedResult, escalatedResult, pendingResult] = await Promise.all([
     supabase.from('audits').select('id', { count: 'exact', head: true }).eq('legal_risk_level', 'critical'),
     supabase.from('audits').select('id', { count: 'exact', head: true }).eq('legal_risk_level', 'high'),
     supabase.from('audits').select('id', { count: 'exact', head: true }).eq('legal_risk_level', 'medium'),
+    supabase.from('audits').select('id', { count: 'exact', head: true }).eq('legal_risk_level', 'safe'),
     supabase.from('audits').select('id', { count: 'exact', head: true }).eq('call_outcome', 'retained'),
+    supabase.from('audits').select('id', { count: 'exact', head: true }).eq('call_outcome', 'churned'),
+    supabase.from('audits').select('id', { count: 'exact', head: true }).eq('call_outcome', 'escalated'),
+    supabase.from('audits').select('id', { count: 'exact', head: true }).eq('call_outcome', 'pending'),
   ])
 
   return {
@@ -110,6 +121,18 @@ async function getEnterpriseStats(): Promise<{ criticalAlerts: number; highRiskA
     highRiskAlerts: highResult.count || 0,
     mediumRiskAlerts: mediumResult.count || 0,
     retainedClients: retainedResult.count || 0,
+    riskDistribution: {
+      critical: criticalResult.count || 0,
+      high: highResult.count || 0,
+      medium: mediumResult.count || 0,
+      safe: safeResult.count || 0,
+    },
+    outcomeDistribution: {
+      retained: retainedResult.count || 0,
+      churned: churnedResult.count || 0,
+      escalated: escalatedResult.count || 0,
+      pending: pendingResult.count || 0,
+    },
   }
 }
 
@@ -226,6 +249,8 @@ export default async function DashboardPage({ searchParams }: PageProps) {
       mediumRiskAlerts: enterpriseData.mediumRiskAlerts,
       retainedClients: enterpriseData.retainedClients,
       avgScore: stats.avgScore,
+      riskDistribution: enterpriseData.riskDistribution,
+      outcomeDistribution: enterpriseData.outcomeDistribution,
     }
 
     return (
