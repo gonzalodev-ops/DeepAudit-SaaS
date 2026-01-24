@@ -62,29 +62,56 @@ export function UploadForm() {
     setError(null)
 
     try {
-      const formData = new FormData()
-      formData.append('file', file)
-
-      // Simulate progress for better UX
-      const progressInterval = setInterval(() => {
-        setProgress(prev => Math.min(prev + 10, 90))
-      }, 200)
-
-      const response = await fetch('/api/calls/upload', {
+      // Step 1: Get signed upload URL (10%)
+      setProgress(10)
+      const urlResponse = await fetch('/api/storage/upload-url', {
         method: 'POST',
-        body: formData,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          filename: file.name,
+          contentType: file.type,
+        }),
       })
 
-      clearInterval(progressInterval)
+      if (!urlResponse.ok) {
+        throw new Error('Error al obtener URL de subida')
+      }
 
-      if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.error || 'Error al subir el archivo')
+      const { signedUrl, path } = await urlResponse.json()
+
+      // Step 2: Upload directly to Supabase Storage (10-70%)
+      setProgress(20)
+      const uploadResponse = await fetch(signedUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': file.type },
+        body: file,
+      })
+
+      if (!uploadResponse.ok) {
+        throw new Error('Error al subir archivo a storage')
+      }
+
+      setProgress(70)
+
+      // Step 3: Process the uploaded file (70-100%)
+      const processResponse = await fetch('/api/calls/process', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          path,
+          filename: file.name,
+          contentType: file.type,
+        }),
+      })
+
+      if (!processResponse.ok) {
+        const data = await processResponse.json()
+        throw new Error(data.error || 'Error al procesar el archivo')
       }
 
       setProgress(100)
 
-      const { callId } = await response.json()
+      const { callId } = await processResponse.json()
 
       // Redirect to the call detail page
       setTimeout(() => {
