@@ -4,8 +4,6 @@ import { DEMO_TENANT_ID } from '@/lib/constants'
 import { SettingsForm } from '@/components/settings/settings-form'
 import { Card, CardContent } from '@/components/ui/card'
 import { AlertCircle } from 'lucide-react'
-import { isEnterpriseMode } from '@/lib/feature-flags'
-import { UnitEconomicsCard } from '@/components/enterprise/unit-economics-card'
 
 async function getTenant() {
   const supabase = await createServiceClient()
@@ -46,20 +44,11 @@ export default async function SettingsPage() {
     )
   }
 
-  const isEnterprise = isEnterpriseMode()
-
   return (
     <div className="flex flex-col">
       <Header title="Configuracion" />
-      <div className="p-6 space-y-6">
+      <div className="p-6">
         <SettingsForm tenant={tenant} />
-
-        {/* Unit Economics - Solo en modo Enterprise */}
-        {isEnterprise && (
-          <div className="mt-8">
-            <UnitEconomicsCard />
-          </div>
-        )}
       </div>
     </div>
   )
