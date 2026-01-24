@@ -8,6 +8,8 @@ import { CostComparisonCard } from '@/components/dashboard/cost-comparison-card'
 import { CostsSummaryCard } from '@/components/dashboard/costs-summary-card'
 import { parseFiltersFromParams } from '@/lib/filters'
 import { CallFilters } from '@/types/filters'
+import { isEnterpriseMode, getBranding } from '@/lib/feature-flags'
+import { EnterpriseDashboard, EnterpriseStats } from '@/components/enterprise'
 
 // Force dynamic rendering - requires database connection at runtime
 export const dynamic = 'force-dynamic'
@@ -69,8 +71,8 @@ async function getStats() {
   let costForMinuteCalc = 0
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   audits.forEach((audit: any) => {
-    const duration = durationMap.get(audit.call_id)
-    if (duration && audit.cost_usd) {
+    const duration = durationMap.get(audit.call_id) as number | undefined
+    if (duration && typeof duration === 'number' && audit.cost_usd) {
       totalMinutes += duration / 60
       costForMinuteCalc += audit.cost_usd
     }
@@ -88,6 +90,26 @@ async function getStats() {
     avgTokens,
     totalMinutes,
     costPerMinuteUSD,
+  }
+}
+
+// Obtener estadisticas Enterprise (alertas criticas y clientes retenidos)
+async function getEnterpriseStats(): Promise<{ criticalAlerts: number; highRiskAlerts: number; mediumRiskAlerts: number; retainedClients: number }> {
+  const supabase = await createServiceClient()
+
+  // Obtener conteo de alertas por nivel de riesgo legal
+  const [criticalResult, highResult, mediumResult, retainedResult] = await Promise.all([
+    supabase.from('audits').select('id', { count: 'exact', head: true }).eq('legal_risk_level', 'critical'),
+    supabase.from('audits').select('id', { count: 'exact', head: true }).eq('legal_risk_level', 'high'),
+    supabase.from('audits').select('id', { count: 'exact', head: true }).eq('legal_risk_level', 'medium'),
+    supabase.from('audits').select('id', { count: 'exact', head: true }).eq('call_outcome', 'retained'),
+  ])
+
+  return {
+    criticalAlerts: criticalResult.count || 0,
+    highRiskAlerts: highResult.count || 0,
+    mediumRiskAlerts: mediumResult.count || 0,
+    retainedClients: retainedResult.count || 0,
   }
 }
 
@@ -152,6 +174,29 @@ async function getRecentCalls(filters: CallFilters) {
     })
   }
 
+  // Apply keyword filter (search in transcript and legal_risk_reasons)
+  if (filters.keyword && filters.keyword.trim()) {
+    const keyword = filters.keyword.toLowerCase().trim()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    result = result.filter((call: any) => {
+      if (!call.audit) return false
+
+      // Search in transcript
+      const transcript = (call.audit.transcript || '').toLowerCase()
+      if (transcript.includes(keyword)) return true
+
+      // Search in legal_risk_reasons
+      const legalReasons = call.audit.legal_risk_reasons || []
+      if (legalReasons.some((reason: string) => reason.toLowerCase().includes(keyword))) return true
+
+      // Search in summary
+      const summary = (call.audit.summary || '').toLowerCase()
+      if (summary.includes(keyword)) return true
+
+      return false
+    })
+  }
+
   // Limit to 10 results for display
   return result.slice(0, 10)
 }
@@ -163,11 +208,52 @@ interface PageProps {
 export default async function DashboardPage({ searchParams }: PageProps) {
   const resolvedParams = await searchParams
   const filters = parseFiltersFromParams(resolvedParams)
+  const enterpriseMode = isEnterpriseMode()
+  const branding = getBranding()
 
   const stats = await getStats()
   const recentCalls = await getRecentCalls(filters)
 
-  // Solo 4 KPIs principales arriba
+  // Si es modo Enterprise, obtener estadisticas adicionales y renderizar EnterpriseDashboard
+  if (enterpriseMode) {
+    const enterpriseData = await getEnterpriseStats()
+
+    const enterpriseStats: EnterpriseStats = {
+      totalCalls: stats.totalCalls,
+      completedAudits: stats.completedAudits,
+      criticalAlerts: enterpriseData.criticalAlerts,
+      highRiskAlerts: enterpriseData.highRiskAlerts,
+      mediumRiskAlerts: enterpriseData.mediumRiskAlerts,
+      retainedClients: enterpriseData.retainedClients,
+      avgScore: stats.avgScore,
+    }
+
+    return (
+      <div className="flex flex-col">
+        <Header
+          title={branding.name}
+          description={branding.subtitle}
+        />
+
+        <div className="p-6 space-y-6">
+          <EnterpriseDashboard stats={enterpriseStats}>
+            {/* Centro de Comando - se pasara como children cuando este listo */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle>Llamadas Recientes</CardTitle>
+                <CallsFilters />
+              </CardHeader>
+              <CardContent>
+                <CallsTable calls={recentCalls} />
+              </CardContent>
+            </Card>
+          </EnterpriseDashboard>
+        </div>
+      </div>
+    )
+  }
+
+  // Dashboard Standard (modo por defecto)
   const statCards = [
     {
       title: 'Total Llamadas',

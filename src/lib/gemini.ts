@@ -40,6 +40,13 @@ interface AuditResult {
   processing_mode: ProcessingMode
   key_moments?: TimestampedQuote[]
   token_usage?: TokenUsage
+  // Enterprise fields
+  call_scenario?: 'retention' | 'cancellation' | 'dispute' | 'collection' | 'support' | 'sales'
+  client_sentiment?: 'hostile' | 'negative' | 'neutral' | 'positive' | 'enthusiastic'
+  legal_risk_level?: 'critical' | 'high' | 'medium' | 'safe'
+  legal_risk_reasons?: string[]
+  call_outcome?: 'retained' | 'churned' | 'hung_up' | 'escalated' | 'pending'
+  suggested_action?: 'immediate_termination' | 'urgent_coaching' | 'standard_coaching' | 'model_script' | 'recognition' | 'none'
 }
 
 function calculateCost(inputTokens: number, outputTokens: number, totalTokens?: number): number {
@@ -105,7 +112,13 @@ function buildPrompt(
     }
   ],
   "recommendations": "Recomendaciones especificas y accionables para el agente",
-  "duration_seconds": 180
+  "duration_seconds": 180,
+  "call_scenario": "support",
+  "client_sentiment": "neutral",
+  "legal_risk_level": "safe",
+  "legal_risk_reasons": [],
+  "call_outcome": "pending",
+  "suggested_action": "none"
 }`
     : `{
   "transcript": null,
@@ -139,7 +152,13 @@ function buildPrompt(
     }
   ],
   "recommendations": "Recomendaciones especificas y accionables para el agente",
-  "duration_seconds": 180
+  "duration_seconds": 180,
+  "call_scenario": "support",
+  "client_sentiment": "neutral",
+  "legal_risk_level": "safe",
+  "legal_risk_reasons": [],
+  "call_outcome": "pending",
+  "suggested_action": "none"
 }`
 
   return `Eres un auditor experto de calidad para un Contact Center de Telecomunicaciones. Tu trabajo es evaluar llamadas de servicio al cliente con EXTREMO RIGOR.
@@ -155,6 +174,46 @@ SI DETECTAS CUALQUIER CONDUCTA ETI-01, ETI-02 o ETI-03:
 - El score general DEBE SER 0
 - Marca fatal_violation: true
 - Lista los codigos de violacion detectados
+
+CLASIFICACION ENTERPRISE (campos obligatorios):
+
+1. call_scenario - Tipo de llamada:
+   - "retention": Cliente amenaza con cancelar, agente intenta retener
+   - "cancellation": Cliente solicita cancelacion de servicio
+   - "dispute": Cliente disputa cargos o facturas
+   - "collection": Llamada de cobranza
+   - "support": Soporte tecnico o resolucion de problemas
+   - "sales": Venta o upgrade de servicios
+
+2. client_sentiment - Sentimiento del cliente:
+   - "hostile": Agresivo, amenazante, usa insultos
+   - "negative": Frustrado, molesto, quejandose
+   - "neutral": Sin emocion particular
+   - "positive": Satisfecho, agradecido
+   - "enthusiastic": Muy contento, elogia el servicio
+
+3. legal_risk_level - Nivel de riesgo legal:
+   - "critical": ETI-01, ETI-02 o ETI-03 detectado (violaciones eticas graves)
+   - "high": Cliente menciona PROFECO, demanda, abogado SIN que el agente escale apropiadamente
+   - "medium": Quejas formales, amenazas de reportar, pero manejadas correctamente
+   - "safe": Sin riesgo legal identificado
+
+4. legal_risk_reasons - Lista razones especificas si legal_risk_level no es "safe"
+
+5. call_outcome - Resultado de la llamada:
+   - "retained": Cliente retenido exitosamente (en llamadas de retencion)
+   - "churned": Cliente confirmo cancelacion/baja
+   - "hung_up": Llamada terminada abruptamente (cualquier parte)
+   - "escalated": Llamada escalada a supervisor u otro departamento
+   - "pending": Requiere seguimiento o sin resolucion definitiva
+
+6. suggested_action - Accion sugerida para el agente:
+   - "immediate_termination": ETI-01, ETI-02 o ETI-03 detectado (despido inmediato)
+   - "urgent_coaching": Score < 50 (coaching urgente requerido)
+   - "standard_coaching": Score 50-70 (coaching estandar)
+   - "model_script": Score > 90 Y call_outcome = "retained" (usar como ejemplo)
+   - "recognition": Score > 85 (reconocimiento positivo)
+   - "none": Desempeno aceptable, sin accion especial
 ${manualContext}
 CRITERIOS DE EVALUACION:
 ${criteriaDescription}
@@ -237,6 +296,47 @@ export async function processAudioWithGemini(
     const hasFatalViolation = parsed.fatal_violation === true
     const finalScore = hasFatalViolation ? 0 : Math.min(100, Math.max(0, parsed.overall_score || 0))
 
+    // Determine suggested_action based on business logic
+    const determineSuggestedAction = (): AuditResult['suggested_action'] => {
+      // ETI violations = immediate termination
+      if (hasFatalViolation) return 'immediate_termination'
+      // Score < 50 = urgent coaching
+      if (finalScore < 50) return 'urgent_coaching'
+      // Score 50-70 = standard coaching
+      if (finalScore >= 50 && finalScore <= 70) return 'standard_coaching'
+      // Score > 90 + retained = model script
+      if (finalScore > 90 && parsed.call_outcome === 'retained') return 'model_script'
+      // Score > 85 = recognition
+      if (finalScore > 85) return 'recognition'
+      // Default
+      return 'none'
+    }
+
+    // Determine legal_risk_level based on violations and content
+    const determineLegalRiskLevel = (): AuditResult['legal_risk_level'] => {
+      if (hasFatalViolation) return 'critical'
+      if (parsed.legal_risk_level) return parsed.legal_risk_level
+      return 'safe'
+    }
+
+    // Validate Enterprise field values
+    const validCallScenarios = ['retention', 'cancellation', 'dispute', 'collection', 'support', 'sales']
+    const validClientSentiments = ['hostile', 'negative', 'neutral', 'positive', 'enthusiastic']
+    const validLegalRiskLevels = ['critical', 'high', 'medium', 'safe']
+    const validCallOutcomes = ['retained', 'churned', 'hung_up', 'escalated', 'pending']
+
+    const callScenario = validCallScenarios.includes(parsed.call_scenario)
+      ? parsed.call_scenario
+      : 'support'
+    const clientSentiment = validClientSentiments.includes(parsed.client_sentiment)
+      ? parsed.client_sentiment
+      : 'neutral'
+    const legalRiskLevel = determineLegalRiskLevel()
+    const callOutcome = validCallOutcomes.includes(parsed.call_outcome)
+      ? parsed.call_outcome
+      : 'pending'
+    const suggestedAction = determineSuggestedAction()
+
     // Validate and sanitize response
     return {
       transcript: mode === 'full' ? (parsed.transcript || 'Transcripcion no disponible') : null,
@@ -274,6 +374,13 @@ export async function processAudioWithGemini(
           }))
         : [],
       token_usage: tokenUsage,
+      // Enterprise fields
+      call_scenario: callScenario as AuditResult['call_scenario'],
+      client_sentiment: clientSentiment as AuditResult['client_sentiment'],
+      legal_risk_level: legalRiskLevel as AuditResult['legal_risk_level'],
+      legal_risk_reasons: Array.isArray(parsed.legal_risk_reasons) ? parsed.legal_risk_reasons : [],
+      call_outcome: callOutcome as AuditResult['call_outcome'],
+      suggested_action: suggestedAction,
     }
   } catch (error) {
     console.error('Gemini processing error:', error)

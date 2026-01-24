@@ -6,7 +6,12 @@ export interface CallFilters {
   status?: CallStatus[]
   dateFrom?: string
   dateTo?: string
+  keyword?: string
 }
 
 export type ScoreRange = 'all' | 'critical' | 'warning' | 'good'
 export type DateRange = 'all' | 'today' | '7days' | '30days'
+
+// Keywords legales predefinidos para Enterprise
+export const LEGAL_KEYWORDS = ['PROFECO', 'demanda', 'abogado', 'queja'] as const
+export type LegalKeyword = typeof LEGAL_KEYWORDS[number]

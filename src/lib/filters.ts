@@ -37,6 +37,12 @@ export function parseFiltersFromParams(searchParams: { [key: string]: string | s
     filters.dateTo = dateTo
   }
 
+  // Parse keyword (for legal search)
+  const keyword = searchParams.keyword
+  if (keyword && typeof keyword === 'string') {
+    filters.keyword = keyword.trim()
+  }
+
   return filters
 }
 
@@ -61,6 +67,9 @@ export function serializeFiltersToParams(filters: CallFilters): URLSearchParams 
   if (filters.dateTo) {
     params.set('dateTo', filters.dateTo)
   }
+  if (filters.keyword) {
+    params.set('keyword', filters.keyword)
+  }
 
   return params
 }
@@ -74,7 +83,8 @@ export function hasActiveFilters(filters: CallFilters): boolean {
     filters.scoreMax !== undefined ||
     (filters.status !== undefined && filters.status.length > 0) ||
     filters.dateFrom !== undefined ||
-    filters.dateTo !== undefined
+    filters.dateTo !== undefined ||
+    (filters.keyword !== undefined && filters.keyword.length > 0)
   )
 }
 

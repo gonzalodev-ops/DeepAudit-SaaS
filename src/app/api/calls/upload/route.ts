@@ -121,6 +121,13 @@ export async function POST(request: NextRequest) {
         processing_mode: auditResult.processing_mode,
         // Key moments with timestamps
         key_moments: auditResult.key_moments || [],
+        // Enterprise fields
+        call_scenario: auditResult.call_scenario || null,
+        client_sentiment: auditResult.client_sentiment || null,
+        legal_risk_level: auditResult.legal_risk_level || null,
+        legal_risk_reasons: auditResult.legal_risk_reasons || [],
+        call_outcome: auditResult.call_outcome || null,
+        suggested_action: auditResult.suggested_action || null,
       })
     } catch (processError) {
       console.error('Processing error:', processError)
