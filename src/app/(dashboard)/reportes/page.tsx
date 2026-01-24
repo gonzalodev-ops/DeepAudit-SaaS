@@ -9,6 +9,22 @@ import { BarChart3, TrendingUp, PieChart } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
 
+interface AuditWithCalls {
+  overall_score: number | null
+  cost_usd: number | null
+  total_tokens: number | null
+  input_tokens: number | null
+  output_tokens: number | null
+  call_id: string
+  legal_risk_level: string | null
+  call_outcome: string | null
+  calls: {
+    tenant_id: string
+    duration_seconds: number | null
+    status: string
+  } | null
+}
+
 async function getReportStats() {
   const supabase = await createServiceClient()
 
@@ -28,7 +44,7 @@ async function getReportStats() {
     `)
     .eq('calls.tenant_id', DEMO_TENANT_ID)
 
-  const completedAudits = audits?.filter(a => a.calls?.status === 'completed') || []
+  const completedAudits = (audits as AuditWithCalls[] | null)?.filter(a => a.calls?.status === 'completed') || []
 
   // Calcular métricas de costos
   const costs = completedAudits
