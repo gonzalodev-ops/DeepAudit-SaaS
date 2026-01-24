@@ -25,7 +25,7 @@ export async function GET() {
     }
 
     const totalAudits = audits?.length || 0
-    const totalCostUsd = audits?.reduce((sum, a) => sum + (a.cost_usd || 0), 0) || 0
+    const totalCostUsd = audits?.reduce((sum: number, a) => sum + (a.cost_usd || 0), 0) || 0
     const avgCostUsd = totalAudits > 0 ? totalCostUsd / totalAudits : 0
     const avgCostMxn = avgCostUsd * USD_TO_MXN
 
