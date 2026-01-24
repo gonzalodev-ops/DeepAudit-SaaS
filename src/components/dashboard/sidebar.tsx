@@ -3,16 +3,19 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
+import { isEnterpriseMode, getBranding } from '@/lib/feature-flags'
 import {
   LayoutDashboard,
   Phone,
   Upload,
   Settings,
   BarChart3,
-  FileAudio
+  FileAudio,
+  Shield,
+  GitCompare
 } from 'lucide-react'
 
-const navigation = [
+const baseNavigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
   { name: 'Llamadas', href: '/calls', icon: Phone },
   { name: 'Subir Audio', href: '/upload', icon: Upload },
@@ -20,14 +23,38 @@ const navigation = [
   { name: 'Configuracion', href: '/settings', icon: Settings },
 ]
 
+const enterpriseNavigation = [
+  { name: 'Comparar', href: '/compare', icon: GitCompare },
+]
+
 export function Sidebar() {
   const pathname = usePathname()
+  const isEnterprise = isEnterpriseMode()
+  const branding = getBranding()
+
+  // Combine navigation based on mode
+  const navigation = isEnterprise
+    ? [...baseNavigation, ...enterpriseNavigation]
+    : baseNavigation
+
+  // Dynamic logo based on branding
+  const LogoIcon = isEnterprise ? Shield : FileAudio
 
   return (
     <aside className="flex h-screen w-64 flex-col border-r bg-card">
       <div className="flex h-16 items-center gap-2 border-b px-6">
-        <FileAudio className="h-8 w-8 text-primary" />
-        <span className="text-xl font-bold">DeepAudit</span>
+        <LogoIcon className={cn(
+          "h-8 w-8",
+          isEnterprise ? "text-[var(--enterprise-primary)]" : "text-primary"
+        )} />
+        <div className="flex flex-col">
+          <span className="text-xl font-bold leading-tight">{branding.name}</span>
+          {isEnterprise && branding.subtitle && (
+            <span className="text-[10px] text-muted-foreground leading-tight truncate max-w-[160px]">
+              {branding.subtitle}
+            </span>
+          )}
+        </div>
       </div>
 
       <nav className="flex-1 space-y-1 p-4">
