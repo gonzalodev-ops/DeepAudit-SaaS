@@ -226,32 +226,346 @@ Incluir:
 
 ---
 
-## Verificación
+## Fase 8: Tests y Validación (2-3 hrs)
 
-### Test 1: Modo Standard
-```bash
-NEXT_PUBLIC_PRODUCT_MODE=standard npm run dev
+### 8.1 Estructura de Tests
+**Crear:** `/src/__tests__/` con estructura:
 ```
-- Dashboard actual con costos ✓
-- Sidebar "DeepAudit" ✓
-
-### Test 2: Modo Enterprise
-```bash
-NEXT_PUBLIC_PRODUCT_MODE=enterprise npm run dev
+src/__tests__/
+├── unit/
+│   ├── feature-flags.test.ts
+│   ├── gemini-enterprise.test.ts
+│   └── utils/
+│       ├── legal-risk.test.ts
+│       └── sentiment.test.ts
+├── integration/
+│   ├── api/
+│   │   ├── upload-enterprise.test.ts
+│   │   └── regenerate.test.ts
+│   └── database/
+│       └── audit-fields.test.ts
+├── components/
+│   ├── enterprise-dashboard.test.tsx
+│   ├── command-center-table.test.tsx
+│   ├── kpi-cards.test.tsx
+│   └── badges.test.tsx
+└── e2e/
+    ├── enterprise-flow.test.ts
+    └── user-stories.test.ts
 ```
-- Dashboard con KPIs de blindaje ✓
-- Tabla Centro de Comando ✓
-- Página /compare disponible ✓
-
-### Test 3: Bombero
-- Subir audio con insultos → Contador rojo pulsante ✓
-
-### Test 4: Abogado
-- Filtrar "PROFECO" → Mostrar llamadas con menciones ✓
-
-### Test 5: Estratega
-- /compare → Ver 2 llamadas lado a lado ✓
 
 ---
 
-## Estimación Total: 8-12 horas de implementación
+## Tests Unitarios
+
+### Test U1: Feature Flags (`/src/__tests__/unit/feature-flags.test.ts`)
+```typescript
+describe('Feature Flags', () => {
+  test('getProductMode() returns "standard" by default')
+  test('getProductMode() returns "enterprise" when env is set')
+  test('isEnterpriseMode() returns false in standard mode')
+  test('isEnterpriseMode() returns true in enterprise mode')
+  test('getBranding() returns correct name for standard')
+  test('getBranding() returns correct name for enterprise')
+  test('getBranding() returns correct subtitle for enterprise')
+  test('getEnterpriseConfig() returns default LTV of 5000')
+})
+```
+
+### Test U2: Gemini Enterprise Fields (`/src/__tests__/unit/gemini-enterprise.test.ts`)
+```typescript
+describe('Gemini Enterprise Processing', () => {
+  // Validación de campos
+  test('call_scenario acepta solo valores válidos')
+  test('client_sentiment acepta solo valores válidos')
+  test('legal_risk_level acepta solo valores válidos')
+  test('call_outcome acepta solo valores válidos')
+  test('suggested_action acepta solo valores válidos')
+
+  // Lógica de determinación
+  test('fatal_violation=true → legal_risk_level="critical"')
+  test('fatal_violation=true → suggested_action="immediate_termination"')
+  test('score < 50 → suggested_action="urgent_coaching"')
+  test('score 50-70 → suggested_action="standard_coaching"')
+  test('score > 90 + retained → suggested_action="model_script"')
+  test('score > 85 → suggested_action="recognition"')
+
+  // Detección ETI
+  test('detecta ETI-01 (insultos) → legal_risk="critical"')
+  test('detecta ETI-02 (gaslighting) → legal_risk="critical"')
+  test('detecta ETI-03 (abandono hostil) → legal_risk="critical"')
+  test('mención PROFECO sin escalamiento → legal_risk="high"')
+})
+```
+
+### Test U3: Validación de Tipos (`/src/__tests__/unit/utils/legal-risk.test.ts`)
+```typescript
+describe('Legal Risk Validation', () => {
+  test('legal_risk_reasons es array de strings')
+  test('legal_risk_reasons puede estar vacío')
+  test('legal_risk_reasons contiene razones específicas')
+  test('mapeo correcto de violation_codes a legal_risk_reasons')
+})
+```
+
+---
+
+## Tests de Integración
+
+### Test I1: API Upload con Campos Enterprise
+```typescript
+describe('POST /api/calls/upload - Enterprise', () => {
+  test('guarda call_scenario correctamente en DB')
+  test('guarda client_sentiment correctamente en DB')
+  test('guarda legal_risk_level correctamente en DB')
+  test('guarda legal_risk_reasons como array')
+  test('guarda call_outcome correctamente en DB')
+  test('guarda suggested_action correctamente en DB')
+  test('CONSERVA input_tokens, output_tokens, cost_usd existentes')
+})
+```
+
+### Test I2: API Regenerate
+```typescript
+describe('POST /api/calls/[id]/regenerate', () => {
+  test('regenera con campos Enterprise')
+  test('conserva metadata de costos original')
+  test('actualiza solo campos Enterprise')
+  test('no pierde campos existentes (transcript, score, etc.)')
+})
+```
+
+### Test I3: Base de Datos
+```typescript
+describe('Database Enterprise Fields', () => {
+  test('migración crea columna call_scenario')
+  test('migración crea columna client_sentiment')
+  test('migración crea columna legal_risk_level')
+  test('migración crea columna legal_risk_reasons')
+  test('migración crea columna call_outcome')
+  test('migración crea columna suggested_action')
+  test('índices creados correctamente')
+  test('constraints CHECK funcionan')
+})
+```
+
+---
+
+## Tests de Componentes UI
+
+### Test C1: Enterprise Dashboard
+```typescript
+describe('EnterpriseDashboard', () => {
+  test('renderiza KPI de cobertura 100%')
+  test('renderiza KPI de dinero salvado con nota')
+  test('renderiza KPI de alertas críticas')
+  test('muestra contador pulsante cuando hay alertas')
+  test('muestra $0 cuando no hay clientes retenidos')
+  test('calcula dinero salvado = LTV × clientes retenidos')
+})
+```
+
+### Test C2: Command Center Table
+```typescript
+describe('CommandCenterTable', () => {
+  test('renderiza columna ID')
+  test('renderiza columna Agente')
+  test('renderiza columna Escenario con badge')
+  test('renderiza columna Sentimiento con indicador color')
+  test('renderiza columna Riesgo Legal con badge')
+  test('renderiza columna Resultado con icono')
+  test('renderiza columna Acción Sugerida')
+  test('ordena por riesgo crítico primero')
+  test('filtra por keyword legal')
+})
+```
+
+### Test C3: Badges y Indicators
+```typescript
+describe('LegalRiskBadge', () => {
+  test('critical → badge rojo pulsante')
+  test('high → badge naranja')
+  test('medium → badge amarillo')
+  test('safe → badge verde')
+})
+
+describe('SentimentIndicator', () => {
+  test('hostile → indicador rojo')
+  test('negative → indicador naranja')
+  test('neutral → indicador gris')
+  test('positive → indicador verde')
+  test('enthusiastic → indicador verde brillante')
+})
+
+describe('ActionBadge', () => {
+  test('immediate_termination → badge rojo "Despido Inmediato"')
+  test('urgent_coaching → badge naranja "Coaching Urgente"')
+  test('model_script → badge verde "Modelar Script"')
+})
+```
+
+### Test C4: Tenant Selector
+```typescript
+describe('TenantSelector', () => {
+  test('muestra lista de tenants disponibles')
+  test('muestra tenant actual seleccionado')
+  test('cambia tenant al seleccionar')
+  test('filtra llamadas por tenant seleccionado')
+})
+```
+
+---
+
+## Tests End-to-End (E2E)
+
+### Test E2E-1: Flujo Completo Enterprise
+```typescript
+describe('Enterprise Flow E2E', () => {
+  test('1. Cambiar a modo Enterprise')
+  test('2. Ver dashboard con KPIs Enterprise')
+  test('3. Ver tabla Centro de Comando')
+  test('4. Subir audio de prueba')
+  test('5. Verificar campos Enterprise generados')
+  test('6. Ver detalle con alertas')
+  test('7. Usar filtro de keywords')
+  test('8. Comparar 2 llamadas')
+})
+```
+
+### Test E2E-2: User Story Bombero
+```typescript
+describe('User Story: Bombero', () => {
+  test('1. Subir audio con insultos (ETI-01)')
+  test('2. Dashboard muestra alerta crítica pulsante')
+  test('3. Tabla muestra riesgo CRÍTICO en rojo')
+  test('4. Detalle muestra transcripción resaltada')
+  test('5. Acción sugerida = Despido Inmediato')
+})
+```
+
+### Test E2E-3: User Story Abogado
+```typescript
+describe('User Story: Abogado', () => {
+  test('1. Subir audio con mención PROFECO')
+  test('2. Usar filtro keyword "PROFECO"')
+  test('3. Tabla filtra correctamente')
+  test('4. Detalle muestra legal_risk_reasons')
+  test('5. Riesgo legal = HIGH')
+})
+```
+
+### Test E2E-4: User Story Estratega
+```typescript
+describe('User Story: Estratega', () => {
+  test('1. Ir a /compare')
+  test('2. Seleccionar llamada con score bajo')
+  test('3. Seleccionar llamada con score alto')
+  test('4. Ver comparación lado a lado')
+  test('5. Diferencias resaltadas visualmente')
+})
+```
+
+---
+
+## Checklist de Validación Manual
+
+### Pre-Deployment
+- [ ] Build completa sin errores: `npm run build`
+- [ ] Lint pasa: `npm run lint`
+- [ ] TypeScript compila: `npx tsc --noEmit`
+
+### Modo Standard (Regresión)
+- [ ] Dashboard muestra KPIs de costos
+- [ ] Sidebar muestra "DeepAudit"
+- [ ] Upload de audio funciona
+- [ ] Vista detalle muestra transcripción
+- [ ] Filtros funcionan
+
+### Modo Enterprise
+- [ ] Variable `NEXT_PUBLIC_PRODUCT_MODE=enterprise` activa modo
+- [ ] Sidebar muestra "DeepAudit Enterprise"
+- [ ] Subtítulo "Powered by CallFasst Intelligence"
+- [ ] Dashboard muestra 3 KPIs Enterprise
+- [ ] KPI Cobertura muestra 100% vs 1.5%
+- [ ] KPI Dinero Salvado muestra cálculo correcto
+- [ ] KPI Alertas muestra contador (pulsante si > 0)
+- [ ] Tabla Centro de Comando con 7 columnas
+- [ ] Badges de colores correctos
+- [ ] Selector de compañía funciona
+- [ ] Página /compare accesible
+- [ ] Filtro keywords funciona
+
+### Campos Gemini Enterprise
+- [ ] call_scenario se genera correctamente
+- [ ] client_sentiment detecta tono del cliente
+- [ ] legal_risk_level clasifica correctamente
+- [ ] legal_risk_reasons lista razones específicas
+- [ ] call_outcome identifica resultado
+- [ ] suggested_action aplica lógica de negocio
+
+### Casos de Prueba Específicos
+
+| Audio | call_scenario | sentiment | risk | outcome | action |
+|-------|---------------|-----------|------|---------|--------|
+| Telco 1 (Alex) | cancellation | negative | high | churned | urgent_coaching |
+| Telco 2 (X) | dispute | hostile | critical | hung_up | immediate_termination |
+| Telco 3 (Sofía) | retention | positive | safe | retained | model_script |
+
+### Base de Datos
+- [ ] Migración ejecutada sin errores
+- [ ] Nuevas columnas visibles en Supabase
+- [ ] Índices creados
+- [ ] Constraints CHECK funcionan
+- [ ] Script regeneración conserva metadata
+
+### Performance
+- [ ] Dashboard carga en < 2s
+- [ ] Tabla con 100 llamadas renderiza fluido
+- [ ] Filtros responden instantáneamente
+
+---
+
+## Archivos de Test a Crear
+
+| Archivo | Propósito |
+|---------|-----------|
+| `/src/__tests__/unit/feature-flags.test.ts` | Tests feature flags |
+| `/src/__tests__/unit/gemini-enterprise.test.ts` | Tests lógica Gemini |
+| `/src/__tests__/integration/api/upload-enterprise.test.ts` | Tests API |
+| `/src/__tests__/components/enterprise-dashboard.test.tsx` | Tests dashboard |
+| `/src/__tests__/components/command-center-table.test.tsx` | Tests tabla |
+| `/src/__tests__/components/badges.test.tsx` | Tests badges |
+| `/src/__tests__/e2e/user-stories.test.ts` | Tests E2E |
+| `/jest.config.js` | Configuración Jest |
+| `/jest.setup.js` | Setup de tests |
+
+---
+
+## Comandos de Test
+
+```bash
+# Ejecutar todos los tests
+npm test
+
+# Tests unitarios
+npm test -- --testPathPattern=unit
+
+# Tests de integración
+npm test -- --testPathPattern=integration
+
+# Tests de componentes
+npm test -- --testPathPattern=components
+
+# Tests E2E
+npm test -- --testPathPattern=e2e
+
+# Coverage
+npm test -- --coverage
+
+# Watch mode
+npm test -- --watch
+```
+
+---
+
+## Estimación Total: 10-14 horas de implementación (incluyendo tests)
