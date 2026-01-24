@@ -2,10 +2,11 @@ import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { DEMO_TENANT_ID } from '@/lib/constants'
 
-// Constantes para cálculos
-const USD_TO_MXN = 17.5
+// Constantes para cálculos (consistente con CostsSummaryCard)
+const USD_TO_MXN = 20
+const INFRASTRUCTURE_OVERHEAD = 0.30 // 30% overhead para hosting, storage, bandwidth
 const HUMAN_AUDIT_COST_MXN = 50 // Costo promedio de auditoría humana
-const HUMAN_AUDIT_PERCENTAGE = 1.5 // % que audita un humano
+const HUMAN_AUDIT_PERCENTAGE = 1.5 // % que audita un humano (estándar industria 1-2%)
 const AI_AUDIT_PERCENTAGE = 100 // % que audita la IA
 
 export async function GET() {
@@ -26,7 +27,10 @@ export async function GET() {
 
     const totalAudits = audits?.length || 0
     const totalCostUsd = audits?.reduce((sum: number, a: { cost_usd: number | null }) => sum + (a.cost_usd || 0), 0) || 0
-    const avgCostUsd = totalAudits > 0 ? totalCostUsd / totalAudits : 0
+
+    // Agregar overhead de infraestructura (consistente con CostsSummaryCard)
+    const totalCostWithOverhead = totalCostUsd * (1 + INFRASTRUCTURE_OVERHEAD)
+    const avgCostUsd = totalAudits > 0 ? totalCostWithOverhead / totalAudits : 0
     const avgCostMxn = avgCostUsd * USD_TO_MXN
 
     // Cálculos de Unit Economics
@@ -37,7 +41,7 @@ export async function GET() {
 
     // Costo total si fuera humano
     const humanTotalCostMxn = totalAudits * HUMAN_AUDIT_COST_MXN
-    const aiTotalCostMxn = totalCostUsd * USD_TO_MXN
+    const aiTotalCostMxn = totalCostWithOverhead * USD_TO_MXN
     const savingsMxn = humanTotalCostMxn - aiTotalCostMxn
 
     return NextResponse.json({
