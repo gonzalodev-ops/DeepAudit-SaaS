@@ -34,7 +34,10 @@ export async function GET() {
     const avgCostMxn = avgCostUsd * USD_TO_MXN
 
     // Cálculos de Unit Economics
-    const humanCapacityRatio = AI_AUDIT_PERCENTAGE / HUMAN_AUDIT_PERCENTAGE // 66.7x
+    // 641x = cuántas auditorías IA puedes hacer por el costo de 1 auditoría humana
+    const humanCapacityRatio = avgCostMxn > 0
+      ? Math.round(HUMAN_AUDIT_COST_MXN / avgCostMxn)  // $50 / $0.078 ≈ 641x
+      : 641 // Default del PRD
     const operationalSavingsPct = avgCostMxn > 0
       ? ((1 - (avgCostMxn / HUMAN_AUDIT_COST_MXN)) * 100)
       : 99.8 // Default del PRD

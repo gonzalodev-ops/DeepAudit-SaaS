@@ -3,6 +3,7 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { DEMO_TENANT_ID } from '@/lib/constants'
 import { isEnterpriseMode } from '@/lib/feature-flags'
 import { UnitEconomicsCard } from '@/components/enterprise/unit-economics-card'
+import { PricingCalculator } from '@/components/enterprise/pricing-calculator'
 import { CostsSummaryCard } from '@/components/dashboard/costs-summary-card'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { BarChart3, TrendingUp, PieChart } from 'lucide-react'
@@ -125,6 +126,9 @@ export default async function ReportesPage() {
 
         {/* Unit Economics - Solo en modo Enterprise */}
         {isEnterprise && <UnitEconomicsCard />}
+
+        {/* Calculadora de Margen - Solo en modo Enterprise */}
+        {isEnterprise && <PricingCalculator />}
 
         {/* Métricas adicionales en Enterprise */}
         {isEnterprise && (

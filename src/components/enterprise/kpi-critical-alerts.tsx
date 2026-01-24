@@ -67,8 +67,8 @@ export function KPICriticalAlertsCard({
                   <p className="text-2xl font-bold" style={{ color: ENTERPRISE_COLORS.critical }}>
                     {criticalAlerts} Critica{criticalAlerts !== 1 ? 's' : ''}
                   </p>
-                  <p className="text-sm text-muted-foreground">
-                    Requieren atencion inmediata
+                  <p className="text-sm font-semibold" style={{ color: ENTERPRISE_COLORS.critical }}>
+                    RIESGO DE MULTA ACTIVO
                   </p>
                 </div>
               </>
@@ -171,9 +171,14 @@ export function KPICriticalAlertsCard({
                   className="h-4 w-4 mt-0.5 flex-shrink-0"
                   style={{ color: ENTERPRISE_COLORS.critical }}
                 />
-                <p className="text-sm" style={{ color: ENTERPRISE_COLORS.critical }}>
-                  <strong>Accion requerida:</strong> Revise las {totalAlerts} alerta{totalAlerts !== 1 ? 's' : ''} pendiente{totalAlerts !== 1 ? 's' : ''} en el Centro de Comando.
-                </p>
+                <div>
+                  <p className="text-sm" style={{ color: ENTERPRISE_COLORS.critical }}>
+                    <strong>Accion requerida:</strong> Revise las {totalAlerts} alerta{totalAlerts !== 1 ? 's' : ''} pendiente{totalAlerts !== 1 ? 's' : ''} en el Centro de Comando.
+                  </p>
+                  <p className="text-xs mt-1 opacity-80" style={{ color: ENTERPRISE_COLORS.critical }}>
+                    PROFECO puede multar hasta $4,500,000 MXN por practicas abusivas
+                  </p>
+                </div>
               </div>
             </div>
           )}

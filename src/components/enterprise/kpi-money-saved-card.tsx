@@ -46,7 +46,7 @@ export function KPIMoneySavedCard({ retainedClients, customLTV }: KPIMoneySavedC
       <CardHeader className="pb-2">
         <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
           <DollarSign className="h-4 w-4" style={{ color: ENTERPRISE_COLORS.primary }} />
-          Dinero Salvado (Estimado)
+          Valor de Cartera Blindada
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -57,7 +57,7 @@ export function KPIMoneySavedCard({ retainedClients, customLTV }: KPIMoneySavedC
               {formatCurrencyMXN(moneySaved)}
             </p>
             <p className="text-sm text-muted-foreground mt-1">
-              Por retenciones exitosas
+              LTV Riesgo Retenido
             </p>
           </div>
 

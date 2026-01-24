@@ -50,17 +50,17 @@ export function UnitEconomicsCard() {
 
   const metrics = [
     {
-      label: 'Costo por Auditoria',
+      label: 'Costo por Auditoria IA',
       value: `$${data.avg_cost_per_audit_mxn.toFixed(2)} MXN`,
-      comparison: `vs $${data.human_audit_cost_mxn} MXN humano`,
+      comparison: `vs $${data.human_audit_cost_mxn} MXN auditor humano`,
       icon: DollarSign,
       color: 'text-green-600',
       bgColor: 'bg-green-50',
     },
     {
-      label: 'Capacidad vs Humano',
+      label: 'Poder de Fuego',
       value: `${data.human_capacity_ratio}x`,
-      comparison: '100% IA vs 1.5% humano',
+      comparison: `${data.human_capacity_ratio} auditorias IA = 1 auditoria humana`,
       icon: Zap,
       color: 'text-blue-600',
       bgColor: 'bg-blue-50',
@@ -68,7 +68,7 @@ export function UnitEconomicsCard() {
     {
       label: 'Ahorro Operativo',
       value: `${data.operational_savings_pct.toFixed(1)}%`,
-      comparison: `$${data.savings_mxn.toLocaleString()} MXN ahorrados`,
+      comparison: `$${data.savings_mxn.toLocaleString()} MXN vs auditoria manual`,
       icon: TrendingUp,
       color: 'text-emerald-600',
       bgColor: 'bg-emerald-50',
@@ -78,12 +78,12 @@ export function UnitEconomicsCard() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
+        <CardTitle className="flex items-center gap-2 text-lg">
           <Calculator className="h-5 w-5 text-[var(--enterprise-primary)]" />
-          Unit Economics
+          Eficiencia Operativa
         </CardTitle>
         <CardDescription>
-          Metricas financieras basadas en {data.total_audits} auditorias procesadas
+          Por menos del costo de 1 auditor QA, procesa {data.total_audits.toLocaleString()} auditorias
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -117,10 +117,20 @@ export function UnitEconomicsCard() {
               <p className="font-semibold">${data.total_cost_mxn.toLocaleString()} MXN</p>
             </div>
             <div>
-              <p className="text-muted-foreground">Costo si fuera humano</p>
+              <p className="text-muted-foreground">Costo equivalente humano</p>
               <p className="font-semibold">${data.human_total_cost_mxn.toLocaleString()} MXN</p>
             </div>
           </div>
+        </div>
+
+        {/* Roadmap - Próximo producto */}
+        <div className="mt-4 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-100">
+          <p className="text-xs font-semibold text-blue-800 mb-1">
+            Proximamente: DeepCoach
+          </p>
+          <p className="text-xs text-blue-700">
+            Bots de entrenamiento personalizados que convierten cada error detectado en una oportunidad de mejora para tu equipo.
+          </p>
         </div>
       </CardContent>
     </Card>
