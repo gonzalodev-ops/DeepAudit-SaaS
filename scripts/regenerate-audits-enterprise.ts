@@ -1,18 +1,14 @@
 /**
  * Script de Regeneracion Enterprise para DeepAudit
  *
- * Este script lee todas las auditorias existentes y las re-procesa
- * para agregar los nuevos campos Enterprise (risk detection, retention, etc.)
- *
- * IMPORTANTE:
- * - Conserva la metadata de tokens/costos existente
- * - Solo agrega los nuevos campos Enterprise
- * - Requiere que la migracion 003_add_enterprise_fields.sql ya se haya ejecutado
+ * Este script REPROCESA COMPLETAMENTE las auditorias existentes con el nuevo
+ * prompt Enterprise, generando NUEVOS costos de tokens.
  *
  * Uso:
  *   npx tsx scripts/regenerate-audits-enterprise.ts
  *   npx tsx scripts/regenerate-audits-enterprise.ts --dry-run
  *   npx tsx scripts/regenerate-audits-enterprise.ts --limit 5
+ *   npx tsx scripts/regenerate-audits-enterprise.ts --force  # reprocesa incluso si ya tiene campos Enterprise
  */
 
 import { createClient } from '@supabase/supabase-js'
@@ -43,183 +39,236 @@ if (!geminiApiKey) {
 const supabase = createClient(supabaseUrl, supabaseServiceKey)
 const genAI = new GoogleGenerativeAI(geminiApiKey)
 
-// Types for Enterprise fields
+// Pricing for Gemini 2.5 Flash
+const PRICING = {
+  inputPer1M: 0.15,
+  outputPer1M: 0.60,
+}
+
+// Types
 type CallScenario = 'retention' | 'cancellation' | 'dispute' | 'collection' | 'support' | 'sales'
 type ClientSentiment = 'hostile' | 'negative' | 'neutral' | 'positive' | 'enthusiastic'
 type LegalRiskLevel = 'critical' | 'high' | 'medium' | 'safe'
 type CallOutcome = 'retained' | 'churned' | 'hung_up' | 'escalated' | 'pending'
 type SuggestedAction = 'immediate_termination' | 'urgent_coaching' | 'standard_coaching' | 'model_script' | 'recognition' | 'none'
 
-interface EnterpriseFields {
-  call_scenario: CallScenario | null
-  client_sentiment: ClientSentiment | null
-  legal_risk_level: LegalRiskLevel | null
-  legal_risk_reasons: string[]
-  call_outcome: CallOutcome | null
-  suggested_action: SuggestedAction | null
-}
-
-interface AuditRecord {
-  id: string
-  call_id: string
+interface AuditResult {
   transcript: string | null
-  overall_score: number | null
-  summary: string | null
-  input_tokens: number | null
-  output_tokens: number | null
-  cost_usd: number | null
-  // Enterprise fields (may be null if not yet populated)
-  call_scenario: string | null
-  client_sentiment: string | null
-  legal_risk_level: string | null
-  legal_risk_reasons: string[] | null
-  call_outcome: string | null
-  suggested_action: string | null
-}
-
-interface CallRecord {
-  id: string
-  audio_url: string | null
-  tenant_id: string | null
+  overall_score: number
+  summary: string
+  strengths: string[]
+  areas_for_improvement: string[]
+  criteria_scores: Array<{
+    criterion_id: string
+    criterion_name: string
+    score: number
+    max_score: number
+    feedback: string
+  }>
+  recommendations: string
+  duration_seconds?: number
+  fatal_violation?: boolean
+  violation_codes?: string[]
+  key_moments?: Array<{
+    timestamp: string
+    speaker: 'agent' | 'client'
+    quote: string
+    context: string
+  }>
+  // Enterprise fields
+  call_scenario: CallScenario
+  client_sentiment: ClientSentiment
+  legal_risk_level: LegalRiskLevel
+  legal_risk_reasons: string[]
+  call_outcome: CallOutcome
+  suggested_action: SuggestedAction
+  // Token usage
+  token_usage: {
+    inputTokens: number
+    outputTokens: number
+    totalTokens: number
+    costUsd: number
+  }
 }
 
 // Parse command line arguments
 const args = process.argv.slice(2)
 const isDryRun = args.includes('--dry-run')
+const forceReprocess = args.includes('--force')
 const limitIndex = args.indexOf('--limit')
 const limit = limitIndex !== -1 ? parseInt(args[limitIndex + 1], 10) : null
 
 /**
- * Build prompt for Enterprise field extraction
+ * Build the complete Enterprise prompt
  */
-function buildEnterprisePrompt(transcript: string | null, summary: string | null): string {
-  const context = transcript
-    ? `TRANSCRIPCION DE LA LLAMADA:\n${transcript}`
-    : `RESUMEN DE LA LLAMADA:\n${summary || 'No disponible'}`
+function buildEnterprisePrompt(manualText: string | null): string {
+  const manualSection = manualText
+    ? `\n\nMANUAL DE CALIDAD DE LA EMPRESA:\n${manualText}\n`
+    : ''
 
-  return `Eres un analista experto en Contact Centers de Telecomunicaciones. Analiza la siguiente llamada y extrae informacion Enterprise para deteccion de riesgos y retencion.
+  return `Eres un auditor de calidad experto en Contact Centers. Analiza el siguiente audio de una llamada telefonica de servicio al cliente.
+${manualSection}
+CRITERIOS DE EVALUACION:
+1. Respeto y Cortesia (25%): Trato profesional, uso de nombre, despedida cordial
+2. Cumplimiento de Protocolo (20%): Saludo institucional, verificacion de datos, ofrecimiento de ayuda
+3. Resolucion del Problema (25%): Entendimiento de necesidad, solucion efectiva, confirmacion
+4. Comunicacion Clara (15%): Lenguaje apropiado, explicaciones claras, sin jerga tecnica innecesaria
+5. Cierre Profesional (15%): Resumen de acuerdos, ofrecimiento adicional, despedida
 
-${context}
+CONDUCTAS DE CERO TOLERANCIA (FALLO FATAL - Score = 0):
+- ETI-01: Agresion Verbal - Insultos, lenguaje soez, burlas al cliente
+- ETI-02: Gaslighting Operativo - Culpar al cliente, invalidar quejas, ridiculizar
+- ETI-03: Abandono Hostil - Colgar mientras el cliente habla, negar folio
 
-INSTRUCCIONES:
-Analiza la llamada y determina los siguientes campos. Responde SOLO con JSON puro (sin markdown).
+CAMPOS ENTERPRISE ADICIONALES:
 
-1. call_scenario: Tipo de escenario de la llamada
-   - "retention": Llamada de retencion, cliente quiere irse pero lo retienen
+1. call_scenario: Tipo de escenario
+   - "retention": Retencion de cliente
    - "cancellation": Cancelacion de servicio
-   - "dispute": Disputa o reclamo formal
-   - "collection": Cobranza o pagos atrasados
-   - "support": Soporte tecnico general
-   - "sales": Venta de servicios adicionales
+   - "dispute": Disputa o reclamo
+   - "collection": Cobranza
+   - "support": Soporte tecnico
+   - "sales": Ventas
 
-2. client_sentiment: Sentimiento predominante del cliente
-   - "hostile": Agresivo, amenazante, gritando
-   - "negative": Molesto, frustrado, quejandose
-   - "neutral": Tranquilo, informativo
-   - "positive": Satisfecho, agradecido
-   - "enthusiastic": Muy contento, elogioso
+2. client_sentiment: Sentimiento del cliente
+   - "hostile": Agresivo, amenazante
+   - "negative": Frustrado, molesto
+   - "neutral": Tranquilo
+   - "positive": Satisfecho
+   - "enthusiastic": Muy contento
 
-3. legal_risk_level: Nivel de riesgo legal detectado
-   - "critical": Amenazas explicitas de demanda, mencion de abogados, grabacion mencionada
-   - "high": Violaciones de protocolo graves, insultos del agente, informacion incorrecta
-   - "medium": Incumplimientos menores, promesas no documentadas
-   - "safe": Sin riesgos legales detectados
+3. legal_risk_level: Riesgo legal
+   - "critical": Violaciones ETI, amenazas de demanda explicitas
+   - "high": Menciones de PROFECO/abogados sin escalamiento
+   - "medium": Quejas formales no atendidas
+   - "safe": Sin riesgo
 
-4. legal_risk_reasons: Array de razones especificas del riesgo legal (vacio si es "safe")
-   Ejemplos: ["Cliente menciono demanda", "Agente dio informacion incorrecta sobre facturacion"]
+4. legal_risk_reasons: Array de razones del riesgo (vacio si es "safe")
 
-5. call_outcome: Resultado final de la llamada
-   - "retained": Cliente retenido exitosamente
-   - "churned": Cliente se fue/cancelo
-   - "hung_up": Cliente o agente colgo antes de resolver
+5. call_outcome: Resultado
+   - "retained": Cliente retenido
+   - "churned": Cliente perdido
+   - "hung_up": Llamada colgada
    - "escalated": Escalado a supervisor
-   - "pending": Sin resolucion clara, requiere seguimiento
+   - "pending": Pendiente
 
-6. suggested_action: Accion recomendada para el agente
-   - "immediate_termination": Despido inmediato por falta grave
-   - "urgent_coaching": Coaching urgente en las proximas 24h
-   - "standard_coaching": Coaching programado normal
-   - "model_script": Usar como ejemplo positivo
-   - "recognition": Reconocimiento por excelencia
-   - "none": Sin accion requerida
+6. suggested_action: Accion sugerida
+   - "immediate_termination": Violacion ETI (score 0)
+   - "urgent_coaching": Score < 50
+   - "standard_coaching": Score 50-70
+   - "model_script": Score > 90 + retencion
+   - "recognition": Score > 85
+   - "none": Sin accion
 
-RESPONDE EXACTAMENTE en este formato JSON:
+RESPONDE EN JSON EXACTO (sin markdown):
 {
+  "transcript": "Transcripcion completa con [Agente] y [Cliente]...",
+  "overall_score": 85,
+  "summary": "Resumen ejecutivo de la llamada...",
+  "strengths": ["Fortaleza 1", "Fortaleza 2"],
+  "areas_for_improvement": ["Area de mejora 1"],
+  "criteria_scores": [
+    {"criterion_id": "1", "criterion_name": "Respeto y Cortesia", "score": 90, "max_score": 100, "feedback": "..."}
+  ],
+  "recommendations": "Recomendaciones especificas...",
+  "fatal_violation": false,
+  "violation_codes": [],
+  "key_moments": [
+    {"timestamp": "1:23", "speaker": "client", "quote": "Cita textual", "context": "Por que es relevante"}
+  ],
   "call_scenario": "support",
   "client_sentiment": "neutral",
   "legal_risk_level": "safe",
   "legal_risk_reasons": [],
   "call_outcome": "pending",
   "suggested_action": "none"
-}
-
-Analiza con rigor profesional. Si no hay suficiente informacion para determinar un campo, usa el valor mas conservador/neutro.`
+}`
 }
 
 /**
- * Process a single audit with Gemini to extract Enterprise fields
+ * Calculate cost from tokens
  */
-async function extractEnterpriseFields(
-  transcript: string | null,
-  summary: string | null
-): Promise<EnterpriseFields> {
+function calculateCost(inputTokens: number, outputTokens: number): number {
+  const inputCost = (inputTokens / 1_000_000) * PRICING.inputPer1M
+  const outputCost = (outputTokens / 1_000_000) * PRICING.outputPer1M
+  return inputCost + outputCost
+}
+
+/**
+ * Process audio with Gemini and get full Enterprise result
+ */
+async function processAudioWithGemini(
+  audioBuffer: Buffer,
+  mimeType: string,
+  manualText: string | null
+): Promise<AuditResult> {
   const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
-  const prompt = buildEnterprisePrompt(transcript, summary)
+  const prompt = buildEnterprisePrompt(manualText)
 
-  try {
-    const result = await model.generateContent([{ text: prompt }])
-    const response = await result.response
-    const text = response.text()
+  // Convert buffer to base64
+  const base64Audio = audioBuffer.toString('base64')
 
-    // Parse JSON response
-    const jsonMatch = text.match(/\{[\s\S]*\}/)
-    if (!jsonMatch) {
-      throw new Error('No JSON found in response')
-    }
+  const result = await model.generateContent([
+    { text: prompt },
+    {
+      inlineData: {
+        mimeType: mimeType,
+        data: base64Audio,
+      },
+    },
+  ])
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const parsed = JSON.parse(jsonMatch[0]) as any
+  const response = await result.response
+  const text = response.text()
 
-    // Validate and sanitize
-    const validScenarios: CallScenario[] = ['retention', 'cancellation', 'dispute', 'collection', 'support', 'sales']
-    const validSentiments: ClientSentiment[] = ['hostile', 'negative', 'neutral', 'positive', 'enthusiastic']
-    const validRiskLevels: LegalRiskLevel[] = ['critical', 'high', 'medium', 'safe']
-    const validOutcomes: CallOutcome[] = ['retained', 'churned', 'hung_up', 'escalated', 'pending']
-    const validActions: SuggestedAction[] = ['immediate_termination', 'urgent_coaching', 'standard_coaching', 'model_script', 'recognition', 'none']
+  // Get token usage
+  const usageMetadata = response.usageMetadata
+  const inputTokens = usageMetadata?.promptTokenCount || 0
+  const outputTokens = usageMetadata?.candidatesTokenCount || 0
+  const totalTokens = usageMetadata?.totalTokenCount || inputTokens + outputTokens
+  const costUsd = calculateCost(inputTokens, outputTokens)
 
-    return {
-      call_scenario: validScenarios.includes(parsed.call_scenario) ? parsed.call_scenario : 'support',
-      client_sentiment: validSentiments.includes(parsed.client_sentiment) ? parsed.client_sentiment : 'neutral',
-      legal_risk_level: validRiskLevels.includes(parsed.legal_risk_level) ? parsed.legal_risk_level : 'safe',
-      legal_risk_reasons: Array.isArray(parsed.legal_risk_reasons) ? parsed.legal_risk_reasons : [],
-      call_outcome: validOutcomes.includes(parsed.call_outcome) ? parsed.call_outcome : 'pending',
-      suggested_action: validActions.includes(parsed.suggested_action) ? parsed.suggested_action : 'none',
-    }
-  } catch (error) {
-    console.error('  Error extracting enterprise fields:', error)
-    // Return safe defaults on error
-    return {
-      call_scenario: 'support',
-      client_sentiment: 'neutral',
-      legal_risk_level: 'safe',
-      legal_risk_reasons: [],
-      call_outcome: 'pending',
-      suggested_action: 'none',
-    }
+  // Parse JSON response
+  const jsonMatch = text.match(/\{[\s\S]*\}/)
+  if (!jsonMatch) {
+    throw new Error('No JSON found in Gemini response')
+  }
+
+  const parsed = JSON.parse(jsonMatch[0])
+
+  // Validate and return
+  return {
+    transcript: parsed.transcript || null,
+    overall_score: Math.min(100, Math.max(0, parsed.overall_score || 0)),
+    summary: parsed.summary || '',
+    strengths: Array.isArray(parsed.strengths) ? parsed.strengths : [],
+    areas_for_improvement: Array.isArray(parsed.areas_for_improvement) ? parsed.areas_for_improvement : [],
+    criteria_scores: Array.isArray(parsed.criteria_scores) ? parsed.criteria_scores : [],
+    recommendations: parsed.recommendations || '',
+    duration_seconds: parsed.duration_seconds,
+    fatal_violation: !!parsed.fatal_violation,
+    violation_codes: Array.isArray(parsed.violation_codes) ? parsed.violation_codes : [],
+    key_moments: Array.isArray(parsed.key_moments) ? parsed.key_moments : [],
+    call_scenario: parsed.call_scenario || 'support',
+    client_sentiment: parsed.client_sentiment || 'neutral',
+    legal_risk_level: parsed.legal_risk_level || 'safe',
+    legal_risk_reasons: Array.isArray(parsed.legal_risk_reasons) ? parsed.legal_risk_reasons : [],
+    call_outcome: parsed.call_outcome || 'pending',
+    suggested_action: parsed.suggested_action || 'none',
+    token_usage: {
+      inputTokens,
+      outputTokens,
+      totalTokens,
+      costUsd,
+    },
   }
 }
 
 /**
  * Check if audit already has enterprise fields populated
  */
-function hasEnterpriseFields(audit: AuditRecord): boolean {
-  return (
-    audit.call_scenario !== null ||
-    audit.client_sentiment !== null ||
-    audit.legal_risk_level !== null ||
-    audit.call_outcome !== null ||
-    audit.suggested_action !== null
-  )
+function hasEnterpriseFields(audit: { call_scenario: string | null }): boolean {
+  return audit.call_scenario !== null
 }
 
 /**
@@ -227,39 +276,53 @@ function hasEnterpriseFields(audit: AuditRecord): boolean {
  */
 async function regenerateAuditsEnterprise(): Promise<void> {
   console.log('='.repeat(60))
-  console.log('DeepAudit Enterprise - Regeneracion de Auditorias')
+  console.log('DeepAudit Enterprise - Regeneracion COMPLETA de Auditorias')
   console.log('='.repeat(60))
+  console.log('\nEste script REPROCESA el audio y calcula NUEVOS tokens/costos')
 
   if (isDryRun) {
     console.log('MODO: Dry Run (no se guardaran cambios)')
+  }
+  if (forceReprocess) {
+    console.log('MODO: Force (reprocesa incluso si ya tiene campos Enterprise)')
   }
   if (limit) {
     console.log(`LIMITE: ${limit} auditorias`)
   }
 
-  console.log('\n[1/4] Verificando columnas Enterprise en la base de datos...')
+  console.log('\n[1/5] Verificando columnas Enterprise...')
 
-  // Test if enterprise columns exist
   const { error: columnTestError } = await supabase
     .from('audits')
-    .select('call_scenario, client_sentiment, legal_risk_level, call_outcome, suggested_action')
+    .select('call_scenario')
     .limit(1)
 
   if (columnTestError) {
-    console.error('ERROR: Las columnas Enterprise no existen en la tabla audits.')
-    console.error('Por favor ejecute primero la migracion: docs/migrations/003_add_enterprise_fields.sql')
-    console.error('Error:', columnTestError.message)
+    console.error('ERROR: Las columnas Enterprise no existen.')
+    console.error('Ejecute primero: docs/migrations/003_add_enterprise_fields.sql')
     process.exit(1)
   }
 
-  console.log('  Columnas Enterprise verificadas OK')
+  console.log('  Columnas verificadas OK')
 
-  console.log('\n[2/4] Obteniendo auditorias existentes...')
+  console.log('\n[2/5] Obteniendo auditorias con sus llamadas...')
 
-  // Get all audits that need processing
+  // Get audits with their calls (to get audio URL)
   let query = supabase
     .from('audits')
-    .select('id, call_id, transcript, summary, overall_score, input_tokens, output_tokens, cost_usd, call_scenario, client_sentiment, legal_risk_level, legal_risk_reasons, call_outcome, suggested_action')
+    .select(`
+      id,
+      call_id,
+      call_scenario,
+      calls!inner (
+        id,
+        audio_url,
+        tenant_id,
+        tenants (
+          manual_text
+        )
+      )
+    `)
     .order('processed_at', { ascending: false })
 
   if (limit) {
@@ -280,116 +343,157 @@ async function regenerateAuditsEnterprise(): Promise<void> {
 
   console.log(`  Encontradas ${audits.length} auditorias`)
 
-  // Filter to only audits without enterprise fields
-  const auditsToProcess = audits.filter(a => !hasEnterpriseFields(a as AuditRecord))
-  const auditsSkipped = audits.length - auditsToProcess.length
-
-  if (auditsSkipped > 0) {
-    console.log(`  ${auditsSkipped} auditorias ya tienen campos Enterprise (omitidas)`)
+  // Filter if not forcing
+  let auditsToProcess = audits
+  if (!forceReprocess) {
+    auditsToProcess = audits.filter(a => !hasEnterpriseFields(a))
+    const skipped = audits.length - auditsToProcess.length
+    if (skipped > 0) {
+      console.log(`  ${skipped} ya tienen campos Enterprise (usar --force para reprocesar)`)
+    }
   }
 
   if (auditsToProcess.length === 0) {
-    console.log('  Todas las auditorias ya tienen campos Enterprise.')
+    console.log('  No hay auditorias pendientes.')
     return
   }
 
   console.log(`  ${auditsToProcess.length} auditorias para procesar`)
 
-  console.log('\n[3/4] Procesando auditorias con Gemini...')
+  console.log('\n[3/5] Procesando auditorias con Gemini...')
 
   let processed = 0
   let failed = 0
+  let totalInputTokens = 0
+  let totalOutputTokens = 0
+  let totalCostUsd = 0
   const startTime = Date.now()
 
   for (const audit of auditsToProcess) {
-    const auditRecord = audit as AuditRecord
     processed++
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const call = (audit as any).calls
+    const audioUrl = call?.audio_url
 
-    console.log(`\n  [${processed}/${auditsToProcess.length}] Procesando auditoria: ${auditRecord.id}`)
-    console.log(`    Call ID: ${auditRecord.call_id}`)
-    console.log(`    Score: ${auditRecord.overall_score}`)
-    console.log(`    Tokens preservados: input=${auditRecord.input_tokens}, output=${auditRecord.output_tokens}`)
-    console.log(`    Costo preservado: $${auditRecord.cost_usd}`)
+    console.log(`\n  [${processed}/${auditsToProcess.length}] Auditoria: ${audit.id}`)
 
-    // Check if we have transcript or at least summary
-    if (!auditRecord.transcript && !auditRecord.summary) {
-      console.log('    OMITIDA: Sin transcripcion ni resumen disponible')
+    if (!audioUrl) {
+      console.log('    OMITIDA: Sin URL de audio')
       failed++
       continue
     }
 
     try {
-      // Extract enterprise fields using Gemini
-      console.log('    Extrayendo campos Enterprise...')
-      const enterpriseFields = await extractEnterpriseFields(
-        auditRecord.transcript,
-        auditRecord.summary
-      )
-
-      console.log(`    Escenario: ${enterpriseFields.call_scenario}`)
-      console.log(`    Sentimiento: ${enterpriseFields.client_sentiment}`)
-      console.log(`    Riesgo Legal: ${enterpriseFields.legal_risk_level}`)
-      console.log(`    Resultado: ${enterpriseFields.call_outcome}`)
-      console.log(`    Accion: ${enterpriseFields.suggested_action}`)
-
-      if (enterpriseFields.legal_risk_reasons.length > 0) {
-        console.log(`    Razones de Riesgo: ${enterpriseFields.legal_risk_reasons.join(', ')}`)
+      // Download audio
+      console.log('    Descargando audio...')
+      const audioResponse = await fetch(audioUrl)
+      if (!audioResponse.ok) {
+        throw new Error(`Failed to download: ${audioResponse.status}`)
       }
 
+      const arrayBuffer = await audioResponse.arrayBuffer()
+      const buffer = Buffer.from(arrayBuffer)
+      const mimeType = audioResponse.headers.get('content-type') || 'audio/mpeg'
+
+      console.log(`    Audio: ${(buffer.length / 1024).toFixed(1)} KB`)
+
+      // Get manual text
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const manualText = (call?.tenants as any)?.manual_text || null
+
+      // Process with Gemini
+      console.log('    Procesando con Gemini Enterprise...')
+      const result = await processAudioWithGemini(buffer, mimeType, manualText)
+
+      // Track totals
+      totalInputTokens += result.token_usage.inputTokens
+      totalOutputTokens += result.token_usage.outputTokens
+      totalCostUsd += result.token_usage.costUsd
+
+      console.log(`    Score: ${result.overall_score}`)
+      console.log(`    Escenario: ${result.call_scenario}`)
+      console.log(`    Sentimiento: ${result.client_sentiment}`)
+      console.log(`    Riesgo Legal: ${result.legal_risk_level}`)
+      console.log(`    Resultado: ${result.call_outcome}`)
+      console.log(`    Accion: ${result.suggested_action}`)
+      console.log(`    Tokens: input=${result.token_usage.inputTokens}, output=${result.token_usage.outputTokens}`)
+      console.log(`    Costo: $${result.token_usage.costUsd.toFixed(6)} USD`)
+
       if (!isDryRun) {
-        // Update audit with enterprise fields ONLY (preserve existing data)
+        // Update audit with ALL new data
         const { error: updateError } = await supabase
           .from('audits')
           .update({
-            call_scenario: enterpriseFields.call_scenario,
-            client_sentiment: enterpriseFields.client_sentiment,
-            legal_risk_level: enterpriseFields.legal_risk_level,
-            legal_risk_reasons: enterpriseFields.legal_risk_reasons,
-            call_outcome: enterpriseFields.call_outcome,
-            suggested_action: enterpriseFields.suggested_action,
+            transcript: result.transcript,
+            overall_score: result.overall_score,
+            summary: result.summary,
+            strengths: result.strengths,
+            areas_for_improvement: result.areas_for_improvement,
+            criteria_scores: result.criteria_scores,
+            recommendations: result.recommendations,
+            key_moments: result.key_moments,
+            // Token usage (NEW)
+            input_tokens: result.token_usage.inputTokens,
+            output_tokens: result.token_usage.outputTokens,
+            total_tokens: result.token_usage.totalTokens,
+            cost_usd: result.token_usage.costUsd,
+            // Enterprise fields
+            call_scenario: result.call_scenario,
+            client_sentiment: result.client_sentiment,
+            legal_risk_level: result.legal_risk_level,
+            legal_risk_reasons: result.legal_risk_reasons,
+            call_outcome: result.call_outcome,
+            suggested_action: result.suggested_action,
+            // Update timestamp
+            processed_at: new Date().toISOString(),
           })
-          .eq('id', auditRecord.id)
+          .eq('id', audit.id)
 
         if (updateError) {
-          console.error(`    ERROR actualizando: ${updateError.message}`)
+          console.error(`    ERROR: ${updateError.message}`)
           failed++
         } else {
           console.log('    Actualizada OK')
         }
       } else {
-        console.log('    [DRY RUN] No se guardo')
+        console.log('    [DRY RUN] No guardado')
       }
 
-      // Rate limiting: wait 500ms between requests to avoid hitting API limits
-      await new Promise(resolve => setTimeout(resolve, 500))
+      // Rate limiting
+      await new Promise(resolve => setTimeout(resolve, 1000))
 
     } catch (error) {
-      console.error(`    ERROR procesando: ${error}`)
+      console.error(`    ERROR: ${error}`)
       failed++
     }
   }
 
   const elapsed = ((Date.now() - startTime) / 1000).toFixed(1)
 
-  console.log('\n[4/4] Resumen de la regeneracion')
+  console.log('\n[4/5] Resumen de Costos')
   console.log('='.repeat(60))
-  console.log(`  Total auditorias encontradas: ${audits.length}`)
-  console.log(`  Omitidas (ya tienen Enterprise): ${auditsSkipped}`)
+  console.log(`  Input Tokens Total:  ${totalInputTokens.toLocaleString()}`)
+  console.log(`  Output Tokens Total: ${totalOutputTokens.toLocaleString()}`)
+  console.log(`  Costo Total USD:     $${totalCostUsd.toFixed(6)}`)
+  console.log(`  Costo Total MXN:     $${(totalCostUsd * 20).toFixed(2)} (TC: $20)`)
+
+  console.log('\n[5/5] Resumen de Procesamiento')
+  console.log('='.repeat(60))
+  console.log(`  Auditorias encontradas: ${audits.length}`)
   console.log(`  Procesadas: ${processed}`)
   console.log(`  Exitosas: ${processed - failed}`)
   console.log(`  Fallidas: ${failed}`)
-  console.log(`  Tiempo total: ${elapsed}s`)
+  console.log(`  Tiempo: ${elapsed}s`)
 
   if (isDryRun) {
-    console.log('\n  NOTA: Esto fue un DRY RUN. No se guardaron cambios.')
-    console.log('  Ejecute sin --dry-run para aplicar los cambios.')
+    console.log('\n  NOTA: Dry Run - No se guardaron cambios.')
   }
 
   console.log('\n' + '='.repeat(60))
   console.log('Regeneracion completada.')
 }
 
-// Run the script
+// Run
 regenerateAuditsEnterprise()
   .then(() => process.exit(0))
   .catch((error) => {
