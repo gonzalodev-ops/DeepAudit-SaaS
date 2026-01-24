@@ -73,7 +73,7 @@ export default async function ReportesPage() {
 
   return (
     <div className="flex flex-col">
-      <Header title="Unit Economics" description="Análisis de rentabilidad y eficiencia operativa" />
+      <Header title="Impacto Financiero" description="ROI y eficiencia operativa de tu inversión" />
       <div className="p-6 space-y-6">
         {/* Sección 1: Unit Economics - Eficiencia Operativa (Enterprise) */}
         {isEnterprise && <UnitEconomicsCard />}

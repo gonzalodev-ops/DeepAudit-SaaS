@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Slider } from '@/components/ui/slider'
 import { Badge } from '@/components/ui/badge'
-import { Calculator, TrendingUp, Users, Zap } from 'lucide-react'
+import { Calculator, TrendingUp, User, Users, Zap } from 'lucide-react'
 import {
   PRICING_PLANS,
   calculateMargin,
@@ -168,6 +168,25 @@ export function PricingCalculator() {
                 </span>
               </div>
             </div>
+          </div>
+
+          {/* Referencia: Auditor QA Humano */}
+          <div className="p-4 bg-muted/30 rounded-lg border mt-4">
+            <h4 className="font-medium flex items-center gap-2 text-sm">
+              <User className="h-4 w-4" />
+              Referencia: Auditor QA Humano
+            </h4>
+            <div className="grid grid-cols-2 gap-2 mt-3 text-sm">
+              <span className="text-muted-foreground">Salario mensual:</span>
+              <span className="font-medium">$30,000 MXN</span>
+              <span className="text-muted-foreground">Capacidad:</span>
+              <span className="font-medium">~800 llamadas/mes</span>
+              <span className="text-muted-foreground">Costo por llamada:</span>
+              <span className="font-medium">$37.50 MXN</span>
+            </div>
+            <p className="text-xs text-muted-foreground mt-2">
+              * Promedio del mercado para auditor QA en call center
+            </p>
           </div>
 
           {/* Multiplicador */}

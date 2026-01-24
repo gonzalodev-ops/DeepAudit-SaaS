@@ -123,15 +123,6 @@ export function UnitEconomicsCard() {
           </div>
         </div>
 
-        {/* Roadmap - Próximo producto */}
-        <div className="mt-4 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-100">
-          <p className="text-xs font-semibold text-blue-800 mb-1">
-            Proximamente: DeepCoach
-          </p>
-          <p className="text-xs text-blue-700">
-            Bots de entrenamiento personalizados que convierten cada error detectado en una oportunidad de mejora para tu equipo.
-          </p>
-        </div>
       </CardContent>
     </Card>
   )

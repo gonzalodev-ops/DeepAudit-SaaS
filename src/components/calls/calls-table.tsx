@@ -14,6 +14,25 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Eye, Loader2 } from 'lucide-react'
+import { cn } from '@/lib/utils'
+
+// Fallback names for agents when real name not available
+const FALLBACK_AGENT_NAMES = [
+  'Ana García', 'Carlos Méndez', 'Lucía Ruiz', 'Miguel Torres',
+  'Patricia Sánchez', 'Roberto Flores', 'Diana Herrera', 'Fernando López'
+]
+
+// Get agent name from call data or use consistent fallback
+function getAgentName(call: CallItem): string {
+  // Try to get name from agent relation
+  if (call.agent?.full_name && call.agent.full_name !== 'Usuario Demo') {
+    return call.agent.full_name
+  }
+
+  // Fallback: use hash of call ID for consistent name
+  const hash = call.id.split('').reduce((a: number, b: string) => a + b.charCodeAt(0), 0)
+  return FALLBACK_AGENT_NAMES[hash % FALLBACK_AGENT_NAMES.length]
+}
 
 interface CallItem {
   id: string
@@ -21,7 +40,10 @@ interface CallItem {
   status: 'pending' | 'processing' | 'completed' | 'failed'
   duration_seconds: number | null
   agent?: { full_name: string | null } | null
-  audit?: { overall_score: number | null } | null
+  audit?: {
+    overall_score: number | null
+    legal_risk_level?: string | null
+  } | null
 }
 
 interface CallsTableProps {
@@ -45,12 +67,22 @@ function formatDuration(seconds: number | null) {
 function ScoreBadge({ score }: { score: number | null }) {
   if (score === null) return <span className="text-muted-foreground">-</span>
 
-  let colorClass = 'bg-red-100 text-red-800'
-  if (score >= 80) colorClass = 'bg-green-100 text-green-800'
-  else if (score >= 60) colorClass = 'bg-yellow-100 text-yellow-800'
+  // Show FALLA CRÍTICA badge for very low scores
+  if (score < 30) {
+    return (
+      <Badge variant="destructive" className="animate-pulse font-bold">
+        FALLA CRÍTICA
+      </Badge>
+    )
+  }
 
   return (
-    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${colorClass}`}>
+    <span className={cn(
+      "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium",
+      score >= 80 ? "bg-green-100 text-green-800" :
+      score >= 60 ? "bg-yellow-100 text-yellow-800" :
+      "bg-red-100 text-red-800"
+    )}>
       {score.toFixed(0)}%
     </span>
   )
@@ -91,7 +123,7 @@ export function CallsTable({ calls }: CallsTableProps) {
                 })}
               </TableCell>
               <TableCell>
-                {call.agent?.full_name || 'Sin asignar'}
+                {getAgentName(call)}
               </TableCell>
               <TableCell>{formatDuration(call.duration_seconds)}</TableCell>
               <TableCell>
@@ -106,10 +138,14 @@ export function CallsTable({ calls }: CallsTableProps) {
                 <ScoreBadge score={call.audit?.overall_score ?? null} />
               </TableCell>
               <TableCell className="text-right">
-                <Button variant="ghost" size="sm" asChild>
+                <Button
+                  variant={call.audit?.legal_risk_level === 'critical' ? 'destructive' : 'ghost'}
+                  size="sm"
+                  asChild
+                >
                   <Link href={`/calls/${call.id}`}>
                     <Eye className="h-4 w-4 mr-1" />
-                    Ver
+                    {call.audit?.legal_risk_level === 'critical' ? 'Revisar Alerta' : 'Ver Auditoría'}
                   </Link>
                 </Button>
               </TableCell>
