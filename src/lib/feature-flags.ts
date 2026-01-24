@@ -13,7 +13,7 @@ export const getBranding = () => {
   return mode === 'enterprise'
     ? {
         name: 'DeepAudit Enterprise',
-        subtitle: 'Powered by CallFasst Intelligence | Cliente Demo: Telecom Global',
+        subtitle: 'Powered by CallFasst Intelligence',
         logo: 'shield',
       }
     : {

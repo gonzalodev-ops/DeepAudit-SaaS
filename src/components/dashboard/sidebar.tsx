@@ -80,15 +80,11 @@ export function Sidebar() {
         })}
       </nav>
 
+      {/* Footer con version */}
       <div className="border-t p-4">
-        <div className="flex items-center gap-3">
-          <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center">
-            <span className="text-sm font-medium text-primary">D</span>
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium truncate">Demo Company</p>
-            <p className="text-xs text-muted-foreground truncate">demo@deepaudit.com</p>
-          </div>
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
+          <span>v1.0.0</span>
+          <span>{isEnterprise ? 'Enterprise' : 'Standard'}</span>
         </div>
       </div>
     </aside>
