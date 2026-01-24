@@ -4,14 +4,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { AlertTriangle, ShieldCheck, Bell } from 'lucide-react'
 
-// Colores Enterprise
+// Colores Enterprise - Paleta más vibrante
 const ENTERPRISE_COLORS = {
-  primary: '#003B6D',    // Azul Corporativo
+  primary: '#0052CC',    // Azul más vibrante
   steel: '#71797E',      // Gris Acero
   light: '#F2F2F2',
-  critical: '#DC2626',   // Rojo
-  success: '#16A34A',    // Verde
-  warning: '#EA580C',    // Naranja
+  critical: '#DE350B',   // Rojo más intenso
+  success: '#00875A',    // Verde más profundo
+  warning: '#FF8B00',    // Naranja más brillante
 }
 
 interface KPICriticalAlertsCardProps {
@@ -30,7 +30,7 @@ export function KPICriticalAlertsCard({
 
   return (
     <Card
-      className="overflow-hidden border-l-4"
+      className={`overflow-hidden border-l-4 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 ${hasAlerts ? 'ring-2 ring-red-200' : ''}`}
       style={{ borderLeftColor: hasAlerts ? ENTERPRISE_COLORS.critical : ENTERPRISE_COLORS.steel }}
     >
       <CardHeader className="pb-2">

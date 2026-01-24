@@ -58,9 +58,9 @@ export function UnitEconomicsCard() {
       bgColor: 'bg-green-50',
     },
     {
-      label: 'Poder de Fuego',
+      label: 'Multiplicador de Eficiencia',
       value: `${data.human_capacity_ratio}x`,
-      comparison: `${data.human_capacity_ratio} auditorias IA = 1 auditoria humana`,
+      comparison: `${data.human_capacity_ratio}x vs auditoria manual`,
       icon: Zap,
       color: 'text-blue-600',
       bgColor: 'bg-blue-50',
@@ -76,7 +76,7 @@ export function UnitEconomicsCard() {
   ]
 
   return (
-    <Card>
+    <Card className="transition-all duration-300 hover:shadow-lg">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-lg">
           <Calculator className="h-5 w-5 text-[var(--enterprise-primary)]" />

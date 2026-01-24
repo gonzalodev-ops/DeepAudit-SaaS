@@ -9,7 +9,7 @@ import {
   Phone,
   Upload,
   Settings,
-  BarChart3,
+  TrendingUp,
   FileAudio,
   Shield,
   GitCompare
@@ -19,7 +19,7 @@ const baseNavigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
   { name: 'Llamadas', href: '/calls', icon: Phone },
   { name: 'Subir Audio', href: '/upload', icon: Upload },
-  { name: 'Reportes', href: '/reportes', icon: BarChart3 },
+  { name: 'Unit Economics', href: '/reportes', icon: TrendingUp },
   { name: 'Configuracion', href: '/settings', icon: Settings },
 ]
 

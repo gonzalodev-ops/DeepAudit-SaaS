@@ -135,8 +135,8 @@ export function CostsSummaryCard({
 
         {/* Nota explicativa */}
         <div className="mt-3 p-2 bg-muted/50 rounded text-xs text-muted-foreground">
-          <strong>Nota:</strong> El costo de IA (Gemini 2.5 Flash) representa ~77% del total.
-          El 30% adicional cubre storage, hosting y bandwidth de forma conservadora.
+          <strong>Nota:</strong> Costo base de IA (Gemini 2.5 Flash) + 30% de overhead por infraestructura
+          (storage, hosting, bandwidth) = costo total mostrado.
         </div>
       </CardContent>
     </Card>

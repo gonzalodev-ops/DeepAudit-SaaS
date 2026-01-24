@@ -4,12 +4,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { getEnterprisConfig } from '@/lib/feature-flags'
 import { CheckCircle2 } from 'lucide-react'
 
-// Colores Enterprise
+// Colores Enterprise - Paleta más vibrante
 const ENTERPRISE_COLORS = {
-  primary: '#003B6D',    // Azul Corporativo
+  primary: '#0052CC',    // Azul más vibrante
   steel: '#71797E',      // Gris Acero
   light: '#F2F2F2',
-  success: '#16A34A',    // Verde
+  success: '#00875A',    // Verde más profundo
 }
 
 interface KPICoverageCardProps {
@@ -29,7 +29,7 @@ export function KPICoverageCard({ totalCalls, completedAudits }: KPICoverageCard
   const strokeDashoffset = circumference - (coveragePercentage / 100) * circumference
 
   return (
-    <Card className="overflow-hidden border-l-4" style={{ borderLeftColor: ENTERPRISE_COLORS.success }}>
+    <Card className="overflow-hidden border-l-4 transition-all duration-300 hover:shadow-lg hover:-translate-y-1" style={{ borderLeftColor: ENTERPRISE_COLORS.success }}>
       <CardHeader className="pb-2">
         <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
           <CheckCircle2 className="h-4 w-4" style={{ color: ENTERPRISE_COLORS.success }} />

@@ -3,6 +3,8 @@ export { KPICoverageCard } from './kpi-coverage-card'
 export { KPIMoneySavedCard } from './kpi-money-saved-card'
 export { KPICriticalAlertsCard } from './kpi-critical-alerts'
 export { EnterpriseDashboard } from './enterprise-dashboard'
+export { RiskDistributionCard } from './risk-distribution-card'
+export { CallOutcomesCard } from './call-outcomes-card'
 
 // Enterprise Badges
 export { LegalRiskBadge } from './legal-risk-badge'

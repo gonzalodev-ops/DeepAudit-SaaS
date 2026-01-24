@@ -3,19 +3,36 @@
 import { KPICoverageCard } from './kpi-coverage-card'
 import { KPIMoneySavedCard } from './kpi-money-saved-card'
 import { KPICriticalAlertsCard } from './kpi-critical-alerts'
+import { RiskDistributionCard } from './risk-distribution-card'
+import { CallOutcomesCard } from './call-outcomes-card'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { getBranding } from '@/lib/feature-flags'
 import { Shield, LayoutDashboard } from 'lucide-react'
 
-// Colores Enterprise
+// Colores Enterprise - Paleta más vibrante
 const ENTERPRISE_COLORS = {
-  primary: '#003B6D',    // Azul Corporativo
+  primary: '#0052CC',    // Azul más vibrante
   steel: '#71797E',      // Gris Acero
   light: '#F2F2F2',
-  critical: '#DC2626',   // Rojo
-  success: '#16A34A',    // Verde
-  warning: '#EA580C',    // Naranja
+  critical: '#DE350B',   // Rojo más intenso
+  success: '#00875A',    // Verde más profundo
+  warning: '#FF8B00',    // Naranja más brillante
+  accent: '#6554C0',     // Púrpura para destacar
+}
+
+export interface RiskDistribution {
+  critical: number
+  high: number
+  medium: number
+  safe: number
+}
+
+export interface OutcomeDistribution {
+  retained: number
+  churned: number
+  escalated: number
+  pending: number
 }
 
 export interface EnterpriseStats {
@@ -26,6 +43,8 @@ export interface EnterpriseStats {
   mediumRiskAlerts?: number
   retainedClients: number
   avgScore: number
+  riskDistribution?: RiskDistribution
+  outcomeDistribution?: OutcomeDistribution
 }
 
 interface EnterpriseDashboardProps {
@@ -111,6 +130,18 @@ export function EnterpriseDashboard({ stats, children }: EnterpriseDashboardProp
         />
       </div>
 
+      {/* Distribution Cards - Risk & Outcomes */}
+      {(stats.riskDistribution || stats.outcomeDistribution) && (
+        <div className="grid gap-4 md:grid-cols-2">
+          {stats.riskDistribution && (
+            <RiskDistributionCard distribution={stats.riskDistribution} />
+          )}
+          {stats.outcomeDistribution && (
+            <CallOutcomesCard distribution={stats.outcomeDistribution} />
+          )}
+        </div>
+      )}
+
       {/* Row 2: Centro de Comando (placeholder o children) */}
       {children ? (
         children
@@ -150,10 +181,10 @@ interface MetricCardProps {
 
 function MetricCard({ title, value, color }: MetricCardProps) {
   return (
-    <Card>
+    <Card className="transition-all duration-300 hover:shadow-lg hover:-translate-y-1 cursor-default">
       <CardContent className="pt-6">
         <div className="text-center">
-          <p className="text-2xl font-bold" style={{ color }}>
+          <p className="text-2xl font-bold transition-transform duration-300" style={{ color }}>
             {value}
           </p>
           <p className="text-sm text-muted-foreground mt-1">
