@@ -6,6 +6,13 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
+// Enterprise-specific types
+export type CallScenario = 'retention' | 'cancellation' | 'dispute' | 'collection' | 'support' | 'sales'
+export type ClientSentiment = 'hostile' | 'negative' | 'neutral' | 'positive' | 'enthusiastic'
+export type LegalRiskLevel = 'critical' | 'high' | 'medium' | 'safe'
+export type CallOutcome = 'retained' | 'churned' | 'hung_up' | 'escalated' | 'pending'
+export type SuggestedAction = 'immediate_termination' | 'urgent_coaching' | 'standard_coaching' | 'model_script' | 'recognition' | 'none'
+
 export interface Database {
   public: {
     Tables: {
@@ -120,6 +127,13 @@ export interface Database {
           criteria_scores: CriterionScore[]
           recommendations: string | null
           processed_at: string
+          // Enterprise fields
+          call_scenario: CallScenario | null
+          client_sentiment: ClientSentiment | null
+          legal_risk_level: LegalRiskLevel | null
+          legal_risk_reasons: string[] | null
+          call_outcome: CallOutcome | null
+          suggested_action: SuggestedAction | null
         }
         Insert: {
           id?: string
@@ -132,6 +146,13 @@ export interface Database {
           criteria_scores?: CriterionScore[]
           recommendations?: string | null
           processed_at?: string
+          // Enterprise fields
+          call_scenario?: CallScenario | null
+          client_sentiment?: ClientSentiment | null
+          legal_risk_level?: LegalRiskLevel | null
+          legal_risk_reasons?: string[] | null
+          call_outcome?: CallOutcome | null
+          suggested_action?: SuggestedAction | null
         }
         Update: {
           id?: string
@@ -144,6 +165,13 @@ export interface Database {
           criteria_scores?: CriterionScore[]
           recommendations?: string | null
           processed_at?: string
+          // Enterprise fields
+          call_scenario?: CallScenario | null
+          client_sentiment?: ClientSentiment | null
+          legal_risk_level?: LegalRiskLevel | null
+          legal_risk_reasons?: string[] | null
+          call_outcome?: CallOutcome | null
+          suggested_action?: SuggestedAction | null
         }
       }
     }
