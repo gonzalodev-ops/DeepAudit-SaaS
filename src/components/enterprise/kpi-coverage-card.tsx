@@ -39,7 +39,7 @@ export function KPICoverageCard({ totalCalls, completedAudits }: KPICoverageCard
       <CardContent>
         <div className="flex items-center justify-between">
           {/* Grafico de anillo */}
-          <div className="relative flex items-center justify-center">
+          <div className="relative flex items-center justify-center pb-3">
             <svg width={size} height={size} className="transform -rotate-90">
               {/* Circulo de fondo */}
               <circle
@@ -70,6 +70,10 @@ export function KPICoverageCard({ totalCalls, completedAudits }: KPICoverageCard
                 {coveragePercentage}%
               </span>
             </div>
+          </div>
+          {/* 641x Multiplier Badge */}
+          <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-xs font-bold px-2 py-0.5 rounded-full shadow-lg">
+            641x
           </div>
 
           {/* Estadisticas */}

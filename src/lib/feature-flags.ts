@@ -12,13 +12,15 @@ export const getBranding = () => {
   const mode = getProductMode()
   return mode === 'enterprise'
     ? {
-        name: 'DeepAudit Enterprise',
-        subtitle: 'Powered by CallFasst Intelligence',
+        name: 'DeepAudit',
+        subtitle: 'Command Center',
+        sidebarName: 'DeepAudit Enterprise',
         logo: 'shield',
       }
     : {
         name: 'DeepAudit',
         subtitle: 'Auditoria Automatizada de Llamadas',
+        sidebarName: 'DeepAudit',
         logo: 'file-audio',
       }
 }
