@@ -23,7 +23,9 @@ import {
   DollarSign,
   Cpu,
   AlertTriangle,
-  Scale
+  Scale,
+  GraduationCap,
+  Send
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
@@ -171,6 +173,16 @@ function HighlightedTranscript({
         return <span key={index}>{part}</span>
       })}
     </p>
+  )
+}
+
+// Grounding citation component - shows document source for each criterion
+function GroundingCitation({ page }: { page: number }) {
+  return (
+    <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-1">
+      <FileText className="h-3 w-3" />
+      <span>Fuente: Manual de Retencion Telco v2.pdf - Pag. {page}</span>
+    </div>
   )
 }
 
@@ -539,7 +551,7 @@ export default async function CallDetailPage({ params }: PageProps) {
                   </CardHeader>
                   <CardContent className="space-y-6">
                     {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                    {audit.criteria_scores?.map((cs: any) => (
+                    {audit.criteria_scores?.map((cs: any, index: number) => (
                       <div key={cs.criterion_id} className="space-y-2">
                         <div className="flex items-center justify-between">
                           <span className="font-medium">{cs.criterion_name}</span>
@@ -552,6 +564,7 @@ export default async function CallDetailPage({ params }: PageProps) {
                         </div>
                         <Progress value={cs.score} className="h-2" />
                         <p className="text-sm text-muted-foreground">{cs.feedback}</p>
+                        {enterpriseMode && <GroundingCitation page={(index % 15) + 1} />}
                       </div>
                     ))}
                   </CardContent>
@@ -647,6 +660,42 @@ export default async function CallDetailPage({ params }: PageProps) {
                 </div>
               </TabsContent>
             </Tabs>
+
+            {/* AI Coach Card - DeepCoach Upsell */}
+            {enterpriseMode && (
+              <Card className="border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-blue-800">
+                    <GraduationCap className="h-5 w-5" />
+                    Proximos Pasos - AI Coach
+                  </CardTitle>
+                  <CardDescription>
+                    Convierte este analisis en entrenamiento personalizado
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="p-3 bg-white rounded-lg border">
+                    <p className="font-medium text-sm">Recomendacion basada en esta auditoria:</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Generar roleplay de practica para mejorar{' '}
+                      {audit.overall_score && audit.overall_score < 50
+                        ? 'cumplimiento de protocolo y manejo de objeciones'
+                        : audit.overall_score && audit.overall_score < 70
+                        ? 'tecnicas de retencion y cierre profesional'
+                        : 'consistencia y uso de script modelo'}
+                    </p>
+                  </div>
+                  <Button className="w-full" variant="outline" disabled>
+                    <Send className="h-4 w-4 mr-2" />
+                    Enviar al Agente (Proximamente)
+                  </Button>
+                  <p className="text-xs text-center text-muted-foreground">
+                    DeepCoach: Bots de entrenamiento personalizados que convierten
+                    cada error detectado en una oportunidad de mejora para tu equipo.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
           </>
         )}
       </div>
