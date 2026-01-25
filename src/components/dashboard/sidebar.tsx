@@ -48,10 +48,10 @@ export function Sidebar() {
           isEnterprise ? "text-[var(--enterprise-primary)]" : "text-primary"
         )} />
         <div className="flex flex-col">
-          <span className="text-xl font-bold leading-tight">{branding.name}</span>
-          {isEnterprise && branding.subtitle && (
+          <span className="text-xl font-bold leading-tight">{branding.sidebarName || branding.name}</span>
+          {isEnterprise && (
             <span className="text-[10px] text-muted-foreground leading-tight truncate max-w-[160px]">
-              {branding.subtitle}
+              AI-Powered Quality Assurance
             </span>
           )}
         </div>
