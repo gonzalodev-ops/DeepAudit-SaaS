@@ -70,10 +70,10 @@ export function KPICoverageCard({ totalCalls, completedAudits }: KPICoverageCard
                 {coveragePercentage}%
               </span>
             </div>
-          </div>
-          {/* 641x Multiplier Badge */}
-          <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-xs font-bold px-2 py-0.5 rounded-full shadow-lg">
-            641x
+            {/* 641x Multiplier Badge */}
+            <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-xs font-bold px-2 py-0.5 rounded-full shadow-lg">
+              641x
+            </div>
           </div>
 
           {/* Estadisticas */}
