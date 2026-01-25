@@ -48,10 +48,12 @@ export function Sidebar() {
           isEnterprise ? "text-[var(--enterprise-primary)]" : "text-primary"
         )} />
         <div className="flex flex-col">
-          <span className="text-xl font-bold leading-tight">{branding.sidebarName || branding.name}</span>
+          <span className="text-lg font-bold leading-tight">
+            {isEnterprise ? 'DeepAudit Enterprise' : branding.name}
+          </span>
           {isEnterprise && (
-            <span className="text-[10px] text-muted-foreground leading-tight truncate max-w-[160px]">
-              AI-Powered Quality Assurance
+            <span className="text-[10px] text-muted-foreground leading-tight">
+              v1.0 | AI-Powered QA
             </span>
           )}
         </div>
@@ -80,11 +82,10 @@ export function Sidebar() {
         })}
       </nav>
 
-      {/* Footer con version */}
+      {/* Footer */}
       <div className="border-t p-4">
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span>v1.0.0</span>
-          <span>{isEnterprise ? 'Enterprise' : 'Standard'}</span>
+        <div className="text-xs text-muted-foreground text-center">
+          {isEnterprise ? '© 2024 DeepAudit' : 'v1.0.0 Standard'}
         </div>
       </div>
     </aside>
