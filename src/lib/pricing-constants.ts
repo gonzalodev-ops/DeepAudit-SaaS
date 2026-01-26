@@ -1,38 +1,29 @@
 // Constantes de Pricing para DeepAudit Enterprise
-// Modelo: Licencia por asiento con tarifa plana y FUP (Fair Use Policy)
+// Modelo: Licencia mensual con llamadas incluidas + overage
+// NOTA: Margenes calculados al 100% de uso (peor caso). Uso tipico 70-80% mejora margenes.
 
 export interface PricingPlan {
   id: string
   name: string
-  pricePerSeatMXN: number
-  fupCallsPerAgent: number
-  costPerCallMXN: number // Costo real interno
-  overage: {
-    enabled: boolean
-    pricePerCallMXN: number
-    maxOveragePercent: number
-    hardCapPercent: number
-  }
+  licenseMXN: number           // Licencia mensual fija
+  includedCalls: number        // Llamadas incluidas en la licencia
+  overagePerCallMXN: number    // Costo por llamada extra
+  marginAt100Percent: number   // Margen al 100% de uso (referencia)
   features: string[]
   recommended?: boolean
 }
 
-// Costo real por auditoría (interno, no mostrar al cliente)
+// Costo real por auditoria (interno, no mostrar al cliente)
 export const INTERNAL_COST_PER_AUDIT_MXN = 0.08
 
 export const PRICING_PLANS: Record<string, PricingPlan> = {
   starter: {
     id: 'starter',
     name: 'Starter',
-    pricePerSeatMXN: 149,
-    fupCallsPerAgent: 400,
-    costPerCallMXN: INTERNAL_COST_PER_AUDIT_MXN,
-    overage: {
-      enabled: true,
-      pricePerCallMXN: 0.50,
-      maxOveragePercent: 25,
-      hardCapPercent: 125,
-    },
+    licenseMXN: 2999,
+    includedCalls: 10000,
+    overagePerCallMXN: 0.30,
+    marginAt100Percent: 73, // Al 100% uso: ($2,999 - $800) / $2,999
     features: [
       'Dashboard basico',
       'Transcripcion automatica',
@@ -43,15 +34,10 @@ export const PRICING_PLANS: Record<string, PricingPlan> = {
   professional: {
     id: 'professional',
     name: 'Professional',
-    pricePerSeatMXN: 249,
-    fupCallsPerAgent: 600,
-    costPerCallMXN: INTERNAL_COST_PER_AUDIT_MXN,
-    overage: {
-      enabled: true,
-      pricePerCallMXN: 0.40,
-      maxOveragePercent: 30,
-      hardCapPercent: 130,
-    },
+    licenseMXN: 11999,
+    includedCalls: 50000,
+    overagePerCallMXN: 0.25,
+    marginAt100Percent: 67, // Al 100% uso: ($11,999 - $4,000) / $11,999
     features: [
       'Todo en Starter',
       'Deteccion de riesgo legal',
@@ -61,75 +47,114 @@ export const PRICING_PLANS: Record<string, PricingPlan> = {
     ],
     recommended: true,
   },
+  business: {
+    id: 'business',
+    name: 'Business',
+    licenseMXN: 44999,
+    includedCalls: 200000,
+    overagePerCallMXN: 0.20,
+    marginAt100Percent: 64, // Al 100% uso: ($44,999 - $16,000) / $44,999
+    features: [
+      'Todo en Professional',
+      'Multi-campana',
+      'Comparativa de agentes avanzada',
+      'Integraciones premium',
+    ],
+  },
   enterprise: {
     id: 'enterprise',
     name: 'Enterprise',
-    pricePerSeatMXN: 399,
-    fupCallsPerAgent: 800,
-    costPerCallMXN: INTERNAL_COST_PER_AUDIT_MXN,
-    overage: {
-      enabled: true,
-      pricePerCallMXN: 0.30,
-      maxOveragePercent: 50,
-      hardCapPercent: 150,
-    },
+    licenseMXN: 350000,
+    includedCalls: 1500000,
+    overagePerCallMXN: 0.15,
+    marginAt100Percent: 66, // Al 100% uso: ($350,000 - $120,000) / $350,000
     features: [
-      'Todo en Professional',
+      'Todo en Business',
       'RAG con manuales personalizados',
-      'Multi-campana',
       'SSO/SAML',
       'SLA 99.9%',
       'Success Manager dedicado',
+      'Soporte prioritario 24/7',
     ],
   },
 }
 
-// Calcula el margen bruto para un plan dado
-export function calculateMargin(
+// Calcula el total y margen para un plan dado
+export function calculatePlanTotal(
   plan: PricingPlan,
-  seats: number,
-  usagePercent: number = 0.8 // Uso típico del 80%
+  totalCalls: number,
+  usagePercent: number = 1.0 // Default 100% para mostrar peor caso
 ) {
-  const monthlyRevenue = plan.pricePerSeatMXN * seats
-  const estimatedCalls = plan.fupCallsPerAgent * seats * usagePercent
-  const monthlyCost = estimatedCalls * plan.costPerCallMXN
-  const grossMargin = monthlyRevenue - monthlyCost
-  const marginPercent = (grossMargin / monthlyRevenue) * 100
+  const actualCalls = Math.round(totalCalls * usagePercent)
+  const extraCalls = Math.max(0, actualCalls - plan.includedCalls)
+  const overage = extraCalls * plan.overagePerCallMXN
+  const totalRevenue = plan.licenseMXN + overage
+  const totalCost = actualCalls * INTERNAL_COST_PER_AUDIT_MXN
+  const grossMargin = totalRevenue - totalCost
+  const marginPercent = (grossMargin / totalRevenue) * 100
 
   return {
-    monthlyRevenue,
-    estimatedCalls,
-    monthlyCost,
+    totalRevenue,
+    overage,
+    extraCalls,
+    totalCost,
     grossMargin,
     marginPercent,
-    annualRevenue: monthlyRevenue * 12,
+    annualRevenue: totalRevenue * 12,
     annualMargin: grossMargin * 12,
   }
 }
 
-// Comparación con auditor humano
+// Comparacion con auditor humano
 export const HUMAN_QA_COMPARISON = {
   monthlySalaryMXN: 30000,
-  callsPerMonth: 800, // ~5 llamadas/hora × 160 horas
+  callsPerMonth: 800, // ~5 llamadas/hora x 160 horas
   costPerCallMXN: 37.5, // 30000 / 800
 }
 
 // Calcula la ventaja vs humano
-export function calculateVsHuman(plan: PricingPlan, seats: number) {
-  const deepAuditCalls = plan.fupCallsPerAgent * seats
-  const humanEquivalent = Math.ceil(deepAuditCalls / HUMAN_QA_COMPARISON.callsPerMonth)
+export function calculateVsHuman(totalCalls: number, planCost: number) {
+  const humanEquivalent = Math.ceil(totalCalls / HUMAN_QA_COMPARISON.callsPerMonth)
   const humanCost = humanEquivalent * HUMAN_QA_COMPARISON.monthlySalaryMXN
-  const deepAuditCost = plan.pricePerSeatMXN * seats
-  const savings = humanCost - deepAuditCost
-  const multiplier = Math.round(deepAuditCalls / HUMAN_QA_COMPARISON.callsPerMonth)
+  const savings = humanCost - planCost
+  const multiplier = Math.round(totalCalls / HUMAN_QA_COMPARISON.callsPerMonth)
 
   return {
-    deepAuditCalls,
+    totalCalls,
     humanEquivalent,
     humanCost,
-    deepAuditCost,
+    planCost,
     savings,
     multiplier,
     savingsPercent: (savings / humanCost) * 100,
+  }
+}
+
+// Verifica anti-arbitraje: Enterprise debe ser mas barato que stacking Business
+export function verifyAntiArbitrage(targetCalls: number) {
+  const business = PRICING_PLANS.business
+  const enterprise = PRICING_PLANS.enterprise
+
+  // Calculo stacking Business
+  const businessPlansNeeded = Math.ceil(targetCalls / business.includedCalls)
+  const businessIncluded = businessPlansNeeded * business.includedCalls
+  const businessExtra = Math.max(0, targetCalls - businessIncluded)
+  const stackingCost = (businessPlansNeeded * business.licenseMXN) + (businessExtra * business.overagePerCallMXN)
+
+  // Calculo Enterprise
+  const enterpriseExtra = Math.max(0, targetCalls - enterprise.includedCalls)
+  const enterpriseCost = enterprise.licenseMXN + (enterpriseExtra * enterprise.overagePerCallMXN)
+
+  return {
+    targetCalls,
+    stacking: {
+      plansNeeded: businessPlansNeeded,
+      cost: stackingCost,
+    },
+    enterprise: {
+      cost: enterpriseCost,
+    },
+    enterpriseIsCheaper: enterpriseCost < stackingCost,
+    savings: stackingCost - enterpriseCost,
   }
 }

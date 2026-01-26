@@ -176,7 +176,7 @@ export function KPICriticalAlertsCard({
                     <strong>Accion requerida:</strong> Revise las {totalAlerts} alerta{totalAlerts !== 1 ? 's' : ''} pendiente{totalAlerts !== 1 ? 's' : ''} en el Centro de Comando.
                   </p>
                   <p className="text-xs mt-1 opacity-80" style={{ color: ENTERPRISE_COLORS.critical }}>
-                    PROFECO puede multar hasta $4,500,000 MXN por practicas abusivas
+                    PROFECO puede multar hasta $4.3M MXN (Art. 128 LFPC)
                   </p>
                 </div>
               </div>
