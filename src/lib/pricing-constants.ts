@@ -24,12 +24,12 @@ export const PRICING_PLANS: Record<string, PricingPlan> = {
   starter: {
     id: 'starter',
     name: 'Starter',
-    pricePerSeatMXN: 149,
+    pricePerSeatMXN: 199,           // $0.50/llamada efectivo
     fupCallsPerAgent: 400,
     costPerCallMXN: INTERNAL_COST_PER_AUDIT_MXN,
     overage: {
       enabled: true,
-      pricePerCallMXN: 0.50,
+      pricePerCallMXN: 0.60,        // Sin descuento en overage
       maxOveragePercent: 25,
       hardCapPercent: 125,
     },
@@ -43,12 +43,12 @@ export const PRICING_PLANS: Record<string, PricingPlan> = {
   professional: {
     id: 'professional',
     name: 'Professional',
-    pricePerSeatMXN: 249,
-    fupCallsPerAgent: 600,
+    pricePerSeatMXN: 299,           // $0.37/llamada efectivo (-26%)
+    fupCallsPerAgent: 800,          // 2x FUP del Starter
     costPerCallMXN: INTERNAL_COST_PER_AUDIT_MXN,
     overage: {
       enabled: true,
-      pricePerCallMXN: 0.40,
+      pricePerCallMXN: 0.45,        // Descuento moderado
       maxOveragePercent: 30,
       hardCapPercent: 130,
     },
@@ -64,12 +64,12 @@ export const PRICING_PLANS: Record<string, PricingPlan> = {
   enterprise: {
     id: 'enterprise',
     name: 'Enterprise',
-    pricePerSeatMXN: 399,
-    fupCallsPerAgent: 800,
+    pricePerSeatMXN: 449,           // $0.30/llamada efectivo (-40%)
+    fupCallsPerAgent: 1500,         // 3.75x FUP del Starter
     costPerCallMXN: INTERNAL_COST_PER_AUDIT_MXN,
     overage: {
       enabled: true,
-      pricePerCallMXN: 0.30,
+      pricePerCallMXN: 0.35,        // Mejor descuento en overage
       maxOveragePercent: 50,
       hardCapPercent: 150,
     },
