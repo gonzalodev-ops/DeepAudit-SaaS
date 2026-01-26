@@ -108,8 +108,8 @@ export function calculatePlanTotal(
 // Comparacion con auditor humano
 export const HUMAN_QA_COMPARISON = {
   monthlySalaryMXN: 30000,
-  callsPerMonth: 800, // ~5 llamadas/hora x 160 horas
-  costPerCallMXN: 37.5, // 30000 / 800
+  callsPerMonth: 600, // ~4 llamadas/hora x 160 horas
+  costPerCallMXN: 50, // 30000 / 600 = 50
 }
 
 // Calcula la ventaja vs humano

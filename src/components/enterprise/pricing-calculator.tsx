@@ -245,9 +245,9 @@ export function PricingCalculator() {
               <span className="text-muted-foreground">Salario mensual:</span>
               <span className="font-medium">$30,000 MXN</span>
               <span className="text-muted-foreground">Capacidad:</span>
-              <span className="font-medium">~800 llamadas/mes</span>
+              <span className="font-medium">~600 llamadas/mes</span>
               <span className="text-muted-foreground">Costo por llamada:</span>
-              <span className="font-medium">$37.50 MXN</span>
+              <span className="font-medium">$50.00 MXN</span>
             </div>
           </div>
 
