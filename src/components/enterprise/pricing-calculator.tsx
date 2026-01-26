@@ -4,10 +4,10 @@ import { useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Slider } from '@/components/ui/slider'
 import { Badge } from '@/components/ui/badge'
-import { Calculator, TrendingUp, User, Users, Zap } from 'lucide-react'
+import { Calculator, TrendingUp, User, Users, Zap, AlertTriangle } from 'lucide-react'
 import {
   PRICING_PLANS,
-  calculateMargin,
+  calculatePlanTotal,
   calculateVsHuman,
   type PricingPlan,
 } from '@/lib/pricing-constants'
@@ -22,52 +22,68 @@ function formatCurrency(amount: number): string {
   }).format(amount)
 }
 
+function formatNumber(num: number): string {
+  if (num >= 1000000) {
+    return `${(num / 1000000).toFixed(1)}M`
+  }
+  if (num >= 1000) {
+    return `${(num / 1000).toFixed(0)}K`
+  }
+  return num.toLocaleString()
+}
+
 export function PricingCalculator() {
-  const [seats, setSeats] = useState(100)
+  const [totalCalls, setTotalCalls] = useState(50000)
   const [selectedPlan, setSelectedPlan] = useState<string>('professional')
 
   const plan = PRICING_PLANS[selectedPlan]
-  const margin = calculateMargin(plan, seats)
-  const vsHuman = calculateVsHuman(plan, seats)
+  const calculation = calculatePlanTotal(plan, totalCalls)
+  const vsHuman = calculateVsHuman(totalCalls, calculation.totalRevenue)
+
+  // Determinar si hay overage
+  const hasOverage = calculation.extraCalls > 0
 
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Calculator className="h-5 w-5 text-[var(--enterprise-primary)]" />
-          Calculadora de Margen
+          Calculadora de Pricing
         </CardTitle>
         <CardDescription>
-          Proyeccion financiera para ventas internas
+          Proyeccion financiera por volumen de llamadas
+          <span className="block text-xs mt-1 text-amber-600">
+            * Margenes calculados al 100% de uso (peor caso)
+          </span>
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Selector de asientos */}
+        {/* Selector de llamadas */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <label className="text-sm font-medium">Numero de asientos</label>
+            <label className="text-sm font-medium">Llamadas mensuales</label>
             <span className="text-2xl font-bold text-[var(--enterprise-primary)]">
-              {seats}
+              {formatNumber(totalCalls)}
             </span>
           </div>
           <Slider
-            value={[seats]}
-            onValueChange={(v) => setSeats(v[0])}
-            min={10}
-            max={500}
-            step={10}
+            value={[totalCalls]}
+            onValueChange={(v) => setTotalCalls(v[0])}
+            min={5000}
+            max={5000000}
+            step={5000}
             className="w-full"
           />
           <div className="flex justify-between text-xs text-muted-foreground">
-            <span>10</span>
-            <span>500</span>
+            <span>5K</span>
+            <span>5M</span>
           </div>
         </div>
 
         {/* Selector de plan */}
         <div className="space-y-3">
           <label className="text-sm font-medium">Plan seleccionado</label>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
             {Object.values(PRICING_PLANS).map((p) => (
               <button
                 key={p.id}
@@ -79,8 +95,10 @@ export function PricingCalculator() {
                 }`}
               >
                 <p className="font-semibold text-sm">{p.name}</p>
-                <p className="text-lg font-bold">{formatCurrency(p.pricePerSeatMXN)}</p>
-                <p className="text-xs text-muted-foreground">/asiento/mes</p>
+                <p className="text-lg font-bold">{formatCurrency(p.licenseMXN)}</p>
+                <p className="text-xs text-muted-foreground">
+                  {formatNumber(p.includedCalls)} incluidas
+                </p>
                 {p.recommended && (
                   <Badge variant="secondary" className="mt-1 text-xs">
                     Recomendado
@@ -91,25 +109,72 @@ export function PricingCalculator() {
           </div>
         </div>
 
+        {/* Desglose del precio */}
+        <div className="p-4 rounded-lg bg-gray-50 border">
+          <h4 className="font-medium text-sm mb-3">Desglose de Precio</h4>
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span>Licencia base</span>
+              <span className="font-semibold">{formatCurrency(plan.licenseMXN)}</span>
+            </div>
+            <div className="flex justify-between text-muted-foreground">
+              <span>Incluye</span>
+              <span>{formatNumber(plan.includedCalls)} llamadas</span>
+            </div>
+            {hasOverage && (
+              <>
+                <div className="flex justify-between text-amber-600">
+                  <span>Llamadas extra ({formatNumber(calculation.extraCalls)})</span>
+                  <span>+ {formatCurrency(calculation.overage)}</span>
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  @ {formatCurrency(plan.overagePerCallMXN)}/llamada extra
+                </div>
+              </>
+            )}
+            <div className="flex justify-between pt-2 border-t font-bold">
+              <span>Total mensual</span>
+              <span className="text-[var(--enterprise-primary)]">
+                {formatCurrency(calculation.totalRevenue)}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Alerta si excede el plan */}
+        {hasOverage && (
+          <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 flex items-start gap-2">
+            <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5" />
+            <div className="text-sm text-amber-800">
+              <strong>Volumen excede el plan.</strong> Considera upgrade a{' '}
+              {selectedPlan === 'starter' && 'Professional'}
+              {selectedPlan === 'professional' && 'Business'}
+              {selectedPlan === 'business' && 'Enterprise'}
+              {selectedPlan === 'enterprise' && 'plan personalizado'}
+              .
+            </div>
+          </div>
+        )}
+
         {/* Resultados */}
         <div className="grid gap-4 pt-4 border-t">
           {/* Proyección mensual */}
           <div className="p-4 rounded-lg bg-gradient-to-r from-green-50 to-emerald-50 border border-green-100">
             <div className="flex items-center gap-2 mb-3">
               <TrendingUp className="h-5 w-5 text-green-600" />
-              <span className="font-semibold text-green-800">Proyeccion Mensual</span>
+              <span className="font-semibold text-green-800">Margen Proyectado</span>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <p className="text-xs text-green-700">Ingreso</p>
+                <p className="text-xs text-green-700">Revenue</p>
                 <p className="text-xl font-bold text-green-800">
-                  {formatCurrency(margin.monthlyRevenue)}
+                  {formatCurrency(calculation.totalRevenue)}
                 </p>
               </div>
               <div>
-                <p className="text-xs text-green-700">Costo operativo</p>
+                <p className="text-xs text-green-700">Costo ({formatNumber(totalCalls)} × $0.08)</p>
                 <p className="text-xl font-bold text-green-800">
-                  {formatCurrency(margin.monthlyCost)}
+                  {formatCurrency(calculation.totalCost)}
                 </p>
               </div>
             </div>
@@ -118,10 +183,10 @@ export function PricingCalculator() {
                 <span className="text-sm font-medium text-green-700">Margen bruto</span>
                 <div className="text-right">
                   <span className="text-2xl font-bold text-green-600">
-                    {formatCurrency(margin.grossMargin)}
+                    {formatCurrency(calculation.grossMargin)}
                   </span>
                   <span className="ml-2 text-sm text-green-600">
-                    ({margin.marginPercent.toFixed(1)}%)
+                    ({calculation.marginPercent.toFixed(1)}%)
                   </span>
                 </div>
               </div>
@@ -131,13 +196,13 @@ export function PricingCalculator() {
           {/* Proyección anual */}
           <div className="grid grid-cols-2 gap-4">
             <div className="p-3 rounded-lg bg-gray-50">
-              <p className="text-xs text-muted-foreground">Ingreso anual</p>
-              <p className="text-lg font-bold">{formatCurrency(margin.annualRevenue)}</p>
+              <p className="text-xs text-muted-foreground">Revenue anual</p>
+              <p className="text-lg font-bold">{formatCurrency(calculation.annualRevenue)}</p>
             </div>
             <div className="p-3 rounded-lg bg-gray-50">
               <p className="text-xs text-muted-foreground">Margen anual</p>
               <p className="text-lg font-bold text-green-600">
-                {formatCurrency(margin.annualMargin)}
+                {formatCurrency(calculation.annualMargin)}
               </p>
             </div>
           </div>
@@ -151,7 +216,7 @@ export function PricingCalculator() {
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-blue-700">Llamadas auditadas</span>
-                <span className="font-semibold">{vsHuman.deepAuditCalls.toLocaleString()}/mes</span>
+                <span className="font-semibold">{formatNumber(totalCalls)}/mes</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-blue-700">Equivalente en auditores</span>
@@ -180,13 +245,10 @@ export function PricingCalculator() {
               <span className="text-muted-foreground">Salario mensual:</span>
               <span className="font-medium">$30,000 MXN</span>
               <span className="text-muted-foreground">Capacidad:</span>
-              <span className="font-medium">~800 llamadas/mes</span>
+              <span className="font-medium">~600 llamadas/mes</span>
               <span className="text-muted-foreground">Costo por llamada:</span>
-              <span className="font-medium">$37.50 MXN</span>
+              <span className="font-medium">$50.00 MXN</span>
             </div>
-            <p className="text-xs text-muted-foreground mt-2">
-              * Promedio del mercado para auditor QA en call center
-            </p>
           </div>
 
           {/* Multiplicador */}
