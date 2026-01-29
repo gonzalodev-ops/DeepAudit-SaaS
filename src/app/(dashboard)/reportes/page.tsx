@@ -1,7 +1,8 @@
 import { Header } from '@/components/dashboard/header'
 import { createServiceClient } from '@/lib/supabase/server'
 import { DEMO_TENANT_ID } from '@/lib/constants'
-import { isEnterpriseMode } from '@/lib/feature-flags'
+import { isEnterpriseMode, showFinancialData } from '@/lib/feature-flags'
+import { redirect } from 'next/navigation'
 import { UnitEconomicsCard } from '@/components/enterprise/unit-economics-card'
 import { PricingCalculator } from '@/components/enterprise/pricing-calculator'
 import { CostsSummaryCard } from '@/components/dashboard/costs-summary-card'
@@ -68,6 +69,10 @@ async function getReportStats() {
 }
 
 export default async function ReportesPage() {
+  if (!showFinancialData()) {
+    redirect('/')
+  }
+
   const stats = await getReportStats()
   const isEnterprise = isEnterpriseMode()
 
