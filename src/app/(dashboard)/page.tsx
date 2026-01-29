@@ -8,7 +8,7 @@ import { CostComparisonCard } from '@/components/dashboard/cost-comparison-card'
 import { CostsSummaryCard } from '@/components/dashboard/costs-summary-card'
 import { parseFiltersFromParams } from '@/lib/filters'
 import { CallFilters } from '@/types/filters'
-import { isEnterpriseMode, getBranding } from '@/lib/feature-flags'
+import { isEnterpriseMode, getBranding, showFinancialData } from '@/lib/feature-flags'
 import { EnterpriseDashboard, EnterpriseStats } from '@/components/enterprise'
 
 // Force dynamic rendering - requires database connection at runtime
@@ -332,22 +332,26 @@ export default async function DashboardPage({ searchParams }: PageProps) {
         </div>
 
         {/* Costos consolidados con overhead */}
-        <CostsSummaryCard
-          totalCostUSD={stats.totalCostUSD}
-          avgCostPerCall={stats.avgCostPerCall}
-          costPerMinuteUSD={stats.costPerMinuteUSD}
-          totalCalls={stats.completedAudits}
-          totalTokens={stats.totalTokens}
-          avgTokens={stats.avgTokens}
-          totalMinutes={stats.totalMinutes}
-        />
+        {showFinancialData() && (
+          <CostsSummaryCard
+            totalCostUSD={stats.totalCostUSD}
+            avgCostPerCall={stats.avgCostPerCall}
+            costPerMinuteUSD={stats.costPerMinuteUSD}
+            totalCalls={stats.completedAudits}
+            totalTokens={stats.totalTokens}
+            avgTokens={stats.avgTokens}
+            totalMinutes={stats.totalMinutes}
+          />
+        )}
 
         {/* Comparativa vs QA Humano */}
-        <CostComparisonCard
-          totalCostUSD={stats.totalCostUSD}
-          totalCalls={stats.completedAudits}
-          avgCostPerCall={stats.avgCostPerCall}
-        />
+        {showFinancialData() && (
+          <CostComparisonCard
+            totalCostUSD={stats.totalCostUSD}
+            totalCalls={stats.completedAudits}
+            avgCostPerCall={stats.avgCostPerCall}
+          />
+        )}
 
         {/* Recent Calls */}
         <Card>

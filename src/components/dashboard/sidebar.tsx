@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
-import { isEnterpriseMode, getBranding } from '@/lib/feature-flags'
+import { isEnterpriseMode, getBranding, showFinancialData } from '@/lib/feature-flags'
 import {
   LayoutDashboard,
   Phone,
@@ -19,8 +19,11 @@ const baseNavigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
   { name: 'Llamadas', href: '/calls', icon: Phone },
   { name: 'Subir Audio', href: '/upload', icon: Upload },
-  { name: 'Impacto Financiero', href: '/reportes', icon: TrendingUp },
   { name: 'Configuracion', href: '/settings', icon: Settings },
+]
+
+const financialNavigation = [
+  { name: 'Impacto Financiero', href: '/reportes', icon: TrendingUp },
 ]
 
 const enterpriseNavigation = [
@@ -33,9 +36,9 @@ export function Sidebar() {
   const branding = getBranding()
 
   // Combine navigation based on mode
-  const navigation = isEnterprise
-    ? [...baseNavigation, ...enterpriseNavigation]
-    : baseNavigation
+  const financial = showFinancialData() ? financialNavigation : []
+  const enterprise = isEnterprise ? enterpriseNavigation : []
+  const navigation = [...baseNavigation, ...financial, ...enterprise]
 
   // Dynamic logo based on branding
   const LogoIcon = isEnterprise ? Shield : FileAudio

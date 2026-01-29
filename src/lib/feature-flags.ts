@@ -1,4 +1,4 @@
-export type ProductMode = 'standard' | 'enterprise'
+export type ProductMode = 'standard' | 'enterprise' | 'poc'
 
 export const getProductMode = (): ProductMode => {
   return (process.env.NEXT_PUBLIC_PRODUCT_MODE as ProductMode) || 'standard'
@@ -8,21 +8,38 @@ export const isEnterpriseMode = (): boolean => {
   return getProductMode() === 'enterprise'
 }
 
+export const isPocMode = (): boolean => {
+  return getProductMode() === 'poc'
+}
+
+export const showFinancialData = (): boolean => {
+  return getProductMode() !== 'poc'
+}
+
 export const getBranding = () => {
   const mode = getProductMode()
-  return mode === 'enterprise'
-    ? {
-        name: 'DeepAudit',
-        subtitle: 'Command Center',
-        sidebarName: 'DeepAudit Enterprise',
-        logo: 'shield',
-      }
-    : {
-        name: 'DeepAudit',
-        subtitle: 'Auditoria Automatizada de Llamadas',
-        sidebarName: 'DeepAudit',
-        logo: 'file-audio',
-      }
+  if (mode === 'enterprise') {
+    return {
+      name: 'DeepAudit',
+      subtitle: 'Command Center',
+      sidebarName: 'DeepAudit Enterprise',
+      logo: 'shield',
+    }
+  }
+  if (mode === 'poc') {
+    return {
+      name: 'DeepAudit',
+      subtitle: 'Prueba de Concepto',
+      sidebarName: 'DeepAudit PoC',
+      logo: 'file-audio',
+    }
+  }
+  return {
+    name: 'DeepAudit',
+    subtitle: 'Auditoria Automatizada de Llamadas',
+    sidebarName: 'DeepAudit',
+    logo: 'file-audio',
+  }
 }
 
 // Configuracion de LTV para calculo de dinero salvado

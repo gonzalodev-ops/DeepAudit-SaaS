@@ -85,6 +85,70 @@ describe('Feature Flags', () => {
     })
   })
 
+  describe('getProductMode - poc', () => {
+    it('returns "poc" when env is set to poc', async () => {
+      process.env.NEXT_PUBLIC_PRODUCT_MODE = 'poc'
+      const { getProductMode } = await import('@/lib/feature-flags')
+      expect(getProductMode()).toBe('poc')
+    })
+  })
+
+  describe('isPocMode', () => {
+    it('returns true in poc mode', async () => {
+      process.env.NEXT_PUBLIC_PRODUCT_MODE = 'poc'
+      const { isPocMode } = await import('@/lib/feature-flags')
+      expect(isPocMode()).toBe(true)
+    })
+
+    it('returns false in standard mode', async () => {
+      process.env.NEXT_PUBLIC_PRODUCT_MODE = 'standard'
+      const { isPocMode } = await import('@/lib/feature-flags')
+      expect(isPocMode()).toBe(false)
+    })
+
+    it('returns false in enterprise mode', async () => {
+      process.env.NEXT_PUBLIC_PRODUCT_MODE = 'enterprise'
+      const { isPocMode } = await import('@/lib/feature-flags')
+      expect(isPocMode()).toBe(false)
+    })
+  })
+
+  describe('showFinancialData', () => {
+    it('returns false in poc mode', async () => {
+      process.env.NEXT_PUBLIC_PRODUCT_MODE = 'poc'
+      const { showFinancialData } = await import('@/lib/feature-flags')
+      expect(showFinancialData()).toBe(false)
+    })
+
+    it('returns true in standard mode', async () => {
+      process.env.NEXT_PUBLIC_PRODUCT_MODE = 'standard'
+      const { showFinancialData } = await import('@/lib/feature-flags')
+      expect(showFinancialData()).toBe(true)
+    })
+
+    it('returns true in enterprise mode', async () => {
+      process.env.NEXT_PUBLIC_PRODUCT_MODE = 'enterprise'
+      const { showFinancialData } = await import('@/lib/feature-flags')
+      expect(showFinancialData()).toBe(true)
+    })
+  })
+
+  describe('getBranding - poc', () => {
+    it('returns PoC subtitle', async () => {
+      process.env.NEXT_PUBLIC_PRODUCT_MODE = 'poc'
+      const { getBranding } = await import('@/lib/feature-flags')
+      const branding = getBranding()
+      expect(branding.subtitle).toBe('Prueba de Concepto')
+    })
+
+    it('returns file-audio logo for poc mode', async () => {
+      process.env.NEXT_PUBLIC_PRODUCT_MODE = 'poc'
+      const { getBranding } = await import('@/lib/feature-flags')
+      const branding = getBranding()
+      expect(branding.logo).toBe('file-audio')
+    })
+  })
+
   describe('getEnterpriseConfig', () => {
     it('returns default LTV of 5000', async () => {
       const { getEnterpriseConfig } = await import('@/lib/feature-flags')

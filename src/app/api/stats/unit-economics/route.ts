@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { DEMO_TENANT_ID } from '@/lib/constants'
+import { showFinancialData } from '@/lib/feature-flags'
 
 // Constantes para cálculos (consistente con CostsSummaryCard)
 const USD_TO_MXN = 20
@@ -10,6 +11,12 @@ const HUMAN_AUDIT_PERCENTAGE = 1.5 // % que audita un humano (estándar industri
 const AI_AUDIT_PERCENTAGE = 100 // % que audita la IA
 
 export async function GET() {
+  if (!showFinancialData()) {
+    return NextResponse.json(
+      { error: 'Financial data is not available in PoC mode' },
+      { status: 403 }
+    )
+  }
   try {
     const supabase = await createServiceClient()
 
