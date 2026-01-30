@@ -23,7 +23,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // --- Auth routes: allow without session ---
-  if (pathname.startsWith('/login') || pathname.startsWith('/auth/')) {
+  if (pathname.startsWith('/login') || pathname.startsWith('/signup') || pathname.startsWith('/auth/')) {
     return NextResponse.next()
   }
 
