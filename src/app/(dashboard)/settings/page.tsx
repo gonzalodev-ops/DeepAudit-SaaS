@@ -1,17 +1,18 @@
 import { Header } from '@/components/dashboard/header'
 import { createServiceClient } from '@/lib/supabase/server'
 import { DEMO_TENANT_ID } from '@/lib/constants'
+import { getAuthContext } from '@/lib/auth/session'
 import { SettingsForm } from '@/components/settings/settings-form'
 import { Card, CardContent } from '@/components/ui/card'
 import { AlertCircle } from 'lucide-react'
 
-async function getTenant() {
+async function getTenant(tenantId: string) {
   const supabase = await createServiceClient()
 
   const { data: tenant, error } = await supabase
     .from('tenants')
     .select('*')
-    .eq('id', DEMO_TENANT_ID)
+    .eq('id', tenantId)
     .single()
 
   if (error) {
@@ -23,7 +24,10 @@ async function getTenant() {
 }
 
 export default async function SettingsPage() {
-  const tenant = await getTenant()
+  const auth = await getAuthContext()
+  const tenantId = auth?.tenantId ?? DEMO_TENANT_ID
+
+  const tenant = await getTenant(tenantId)
 
   if (!tenant) {
     return (

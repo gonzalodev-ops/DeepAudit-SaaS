@@ -13,6 +13,12 @@ export type LegalRiskLevel = 'critical' | 'high' | 'medium' | 'safe'
 export type CallOutcome = 'retained' | 'churned' | 'hung_up' | 'escalated' | 'pending'
 export type SuggestedAction = 'immediate_termination' | 'urgent_coaching' | 'standard_coaching' | 'model_script' | 'recognition' | 'none'
 
+// Callfast types
+export type PipelineType = 'legacy' | 'callfast'
+export type BillingModel = 'platform' | 'byoak'
+export type BillingStatus = 'pending' | 'billed' | 'free_tier'
+export type ProcessingStep = 'stt' | 'silence_detection' | 'llm_evaluation'
+
 export interface Database {
   public: {
     Tables: {
@@ -26,6 +32,12 @@ export interface Database {
           manual_text: string | null
           audit_criteria: AuditCriterion[]
           default_processing_mode: 'full' | 'compliance' | null
+          pipeline_type: string | null
+          gemini_api_key_encrypted: string | null
+          stt_api_key_encrypted: string | null
+          billing_model: string | null
+          price_per_minute: number | null
+          price_per_audit: number | null
           created_at: string
           updated_at: string
         }
@@ -38,6 +50,12 @@ export interface Database {
           manual_text?: string | null
           audit_criteria?: AuditCriterion[]
           default_processing_mode?: 'full' | 'compliance' | null
+          pipeline_type?: string | null
+          gemini_api_key_encrypted?: string | null
+          stt_api_key_encrypted?: string | null
+          billing_model?: string | null
+          price_per_minute?: number | null
+          price_per_audit?: number | null
           created_at?: string
           updated_at?: string
         }
@@ -50,6 +68,12 @@ export interface Database {
           manual_text?: string | null
           audit_criteria?: AuditCriterion[]
           default_processing_mode?: 'full' | 'compliance' | null
+          pipeline_type?: string | null
+          gemini_api_key_encrypted?: string | null
+          stt_api_key_encrypted?: string | null
+          billing_model?: string | null
+          price_per_minute?: number | null
+          price_per_audit?: number | null
           created_at?: string
           updated_at?: string
         }
@@ -92,6 +116,10 @@ export interface Database {
           duration_seconds: number | null
           status: 'pending' | 'processing' | 'completed' | 'failed'
           metadata: Json
+          stt_transcript_url: string | null
+          channel_count: number | null
+          campaign_id: string | null
+          subcampaign_id: string | null
           created_at: string
         }
         Insert: {
@@ -102,6 +130,10 @@ export interface Database {
           duration_seconds?: number | null
           status?: 'pending' | 'processing' | 'completed' | 'failed'
           metadata?: Json
+          stt_transcript_url?: string | null
+          channel_count?: number | null
+          campaign_id?: string | null
+          subcampaign_id?: string | null
           created_at?: string
         }
         Update: {
@@ -112,6 +144,10 @@ export interface Database {
           duration_seconds?: number | null
           status?: 'pending' | 'processing' | 'completed' | 'failed'
           metadata?: Json
+          stt_transcript_url?: string | null
+          channel_count?: number | null
+          campaign_id?: string | null
+          subcampaign_id?: string | null
           created_at?: string
         }
       }
@@ -134,6 +170,14 @@ export interface Database {
           legal_risk_reasons: string[] | null
           call_outcome: CallOutcome | null
           suggested_action: SuggestedAction | null
+          // Callfast fields
+          agent_transcript: string | null
+          client_transcript: string | null
+          total_silence_seconds: number | null
+          silence_count: number | null
+          pipeline_type: string | null
+          processing_mode: string | null
+          key_moments: Json | null
         }
         Insert: {
           id?: string
@@ -153,6 +197,14 @@ export interface Database {
           legal_risk_reasons?: string[] | null
           call_outcome?: CallOutcome | null
           suggested_action?: SuggestedAction | null
+          // Callfast fields
+          agent_transcript?: string | null
+          client_transcript?: string | null
+          total_silence_seconds?: number | null
+          silence_count?: number | null
+          pipeline_type?: string | null
+          processing_mode?: string | null
+          key_moments?: Json | null
         }
         Update: {
           id?: string
@@ -172,6 +224,253 @@ export interface Database {
           legal_risk_reasons?: string[] | null
           call_outcome?: CallOutcome | null
           suggested_action?: SuggestedAction | null
+          // Callfast fields
+          agent_transcript?: string | null
+          client_transcript?: string | null
+          total_silence_seconds?: number | null
+          silence_count?: number | null
+          pipeline_type?: string | null
+          processing_mode?: string | null
+          key_moments?: Json | null
+        }
+      }
+      campaigns: {
+        Row: {
+          id: string
+          tenant_id: string
+          name: string
+          description: string | null
+          is_active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          tenant_id: string
+          name: string
+          description?: string | null
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          tenant_id?: string
+          name?: string
+          description?: string | null
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      subcampaigns: {
+        Row: {
+          id: string
+          campaign_id: string
+          name: string
+          start_date: string | null
+          end_date: string | null
+          is_active: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          campaign_id: string
+          name: string
+          start_date?: string | null
+          end_date?: string | null
+          is_active?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          campaign_id?: string
+          name?: string
+          start_date?: string | null
+          end_date?: string | null
+          is_active?: boolean
+          created_at?: string
+        }
+      }
+      commercial_offers: {
+        Row: {
+          id: string
+          subcampaign_id: string
+          offer_data: Json
+          valid_from: string
+          valid_until: string | null
+          version: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          subcampaign_id: string
+          offer_data: Json
+          valid_from: string
+          valid_until?: string | null
+          version?: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          subcampaign_id?: string
+          offer_data?: Json
+          valid_from?: string
+          valid_until?: string | null
+          version?: number
+          created_at?: string
+        }
+      }
+      silence_events: {
+        Row: {
+          id: string
+          call_id: string
+          start_seconds: number
+          end_seconds: number
+          duration_seconds: number
+          channel: number
+          silence_type: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          call_id: string
+          start_seconds: number
+          end_seconds: number
+          duration_seconds: number
+          channel: number
+          silence_type: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          call_id?: string
+          start_seconds?: number
+          end_seconds?: number
+          duration_seconds?: number
+          channel?: number
+          silence_type?: string
+          created_at?: string
+        }
+      }
+      usage_logs: {
+        Row: {
+          id: string
+          tenant_id: string
+          call_id: string
+          audio_duration_seconds: number
+          audio_duration_minutes: number
+          pipeline_type: string
+          stt_cost_usd: number | null
+          llm_cost_usd: number | null
+          total_internal_cost_usd: number | null
+          billing_status: BillingStatus
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          tenant_id: string
+          call_id: string
+          audio_duration_seconds: number
+          audio_duration_minutes: number
+          pipeline_type: string
+          stt_cost_usd?: number | null
+          llm_cost_usd?: number | null
+          total_internal_cost_usd?: number | null
+          billing_status?: BillingStatus
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          tenant_id?: string
+          call_id?: string
+          audio_duration_seconds?: number
+          audio_duration_minutes?: number
+          pipeline_type?: string
+          stt_cost_usd?: number | null
+          llm_cost_usd?: number | null
+          total_internal_cost_usd?: number | null
+          billing_status?: BillingStatus
+          created_at?: string
+        }
+      }
+      processing_logs: {
+        Row: {
+          id: string
+          tenant_id: string
+          call_id: string
+          step: string
+          status: string
+          provider: string | null
+          model_version: string | null
+          prompt_hash: string | null
+          config_snapshot: Json | null
+          duration_ms: number | null
+          input_tokens: number | null
+          output_tokens: number | null
+          cost_usd: number | null
+          error_message: string | null
+          audio_duration_seconds: number | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          tenant_id: string
+          call_id: string
+          step: string
+          status: string
+          provider?: string | null
+          model_version?: string | null
+          prompt_hash?: string | null
+          config_snapshot?: Json | null
+          duration_ms?: number | null
+          input_tokens?: number | null
+          output_tokens?: number | null
+          cost_usd?: number | null
+          error_message?: string | null
+          audio_duration_seconds?: number | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          tenant_id?: string
+          call_id?: string
+          step?: string
+          status?: string
+          provider?: string | null
+          model_version?: string | null
+          prompt_hash?: string | null
+          config_snapshot?: Json | null
+          duration_ms?: number | null
+          input_tokens?: number | null
+          output_tokens?: number | null
+          cost_usd?: number | null
+          error_message?: string | null
+          audio_duration_seconds?: number | null
+          created_at?: string
+        }
+      }
+      tenant_domains: {
+        Row: {
+          id: string
+          tenant_id: string
+          hostname: string
+          is_primary: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          tenant_id: string
+          hostname: string
+          is_primary?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          tenant_id?: string
+          hostname?: string
+          is_primary?: boolean
+          created_at?: string
         }
       }
     }
@@ -197,6 +496,13 @@ export type Call = Database['public']['Tables']['calls']['Row']
 export type Audit = Database['public']['Tables']['audits']['Row']
 export type Tenant = Database['public']['Tables']['tenants']['Row']
 export type User = Database['public']['Tables']['users']['Row']
+export type Campaign = Database['public']['Tables']['campaigns']['Row']
+export type Subcampaign = Database['public']['Tables']['subcampaigns']['Row']
+export type CommercialOffer = Database['public']['Tables']['commercial_offers']['Row']
+export type SilenceEvent = Database['public']['Tables']['silence_events']['Row']
+export type UsageLog = Database['public']['Tables']['usage_logs']['Row']
+export type ProcessingLog = Database['public']['Tables']['processing_logs']['Row']
+export type TenantDomain = Database['public']['Tables']['tenant_domains']['Row']
 
 export interface CallWithAudit extends Call {
   audit?: Audit | null

@@ -1,16 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
-import { DEMO_TENANT_ID } from '@/lib/constants'
+import { getTenantIdFromRequest } from '@/lib/auth/session'
 import { AuditCriterion } from '@/types/database'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const tenantId = getTenantIdFromRequest(request)
     const supabase = await createServiceClient()
 
     const { data: tenant, error } = await supabase
       .from('tenants')
       .select('*')
-      .eq('id', DEMO_TENANT_ID)
+      .eq('id', tenantId)
       .single()
 
     if (error) {
@@ -31,6 +32,7 @@ export async function GET() {
 
 export async function PUT(request: NextRequest) {
   try {
+    const tenantId = getTenantIdFromRequest(request)
     const body = await request.json()
     const { name, industry, manual_text, audit_criteria, default_processing_mode } = body
 
@@ -103,7 +105,7 @@ export async function PUT(request: NextRequest) {
     const { data: tenant, error } = await supabase
       .from('tenants')
       .update(updateData)
-      .eq('id', DEMO_TENANT_ID)
+      .eq('id', tenantId)
       .select()
       .single()
 

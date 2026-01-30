@@ -1,6 +1,7 @@
 import { Header } from '@/components/dashboard/header'
 import { createServiceClient } from '@/lib/supabase/server'
 import { DEMO_TENANT_ID } from '@/lib/constants'
+import { getAuthContext } from '@/lib/auth/session'
 import { isEnterpriseMode, showFinancialData } from '@/lib/feature-flags'
 import { redirect } from 'next/navigation'
 import { UnitEconomicsCard } from '@/components/enterprise/unit-economics-card'
@@ -21,7 +22,7 @@ interface AuditWithCalls {
   } | null
 }
 
-async function getReportStats() {
+async function getReportStats(tenantId: string) {
   const supabase = await createServiceClient()
 
   // Obtener datos de auditorías con costos
@@ -33,7 +34,7 @@ async function getReportStats() {
       call_id,
       calls!inner(tenant_id, duration_seconds, status)
     `)
-    .eq('calls.tenant_id', DEMO_TENANT_ID)
+    .eq('calls.tenant_id', tenantId)
 
   const completedAudits = (audits as AuditWithCalls[] | null)?.filter(a => a.calls?.status === 'completed') || []
 
@@ -73,7 +74,10 @@ export default async function ReportesPage() {
     redirect('/')
   }
 
-  const stats = await getReportStats()
+  const auth = await getAuthContext()
+  const tenantId = auth?.tenantId ?? DEMO_TENANT_ID
+
+  const stats = await getReportStats(tenantId)
   const isEnterprise = isEnterpriseMode()
 
   return (

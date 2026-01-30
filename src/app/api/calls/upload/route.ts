@@ -56,18 +56,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to upload file' }, { status: 500 })
     }
 
-    // Get public URL
-    const { data: urlData } = supabase.storage
-      .from('call-recordings')
-      .getPublicUrl(filePath)
-
     // Create call record with pending status
     const { data: call, error: callError } = await supabase
       .from('calls')
       .insert({
         tenant_id: DEMO_TENANT_ID,
         agent_id: DEMO_USER_ID,
-        audio_url: urlData.publicUrl,
+        audio_url: filePath,
         status: 'processing',
         metadata: { original_filename: file.name },
       })
@@ -113,11 +108,6 @@ export async function POST(request: NextRequest) {
         areas_for_improvement: auditResult.areas_for_improvement,
         criteria_scores: auditResult.criteria_scores,
         recommendations: auditResult.recommendations,
-        // New fields for token tracking
-        input_tokens: auditResult.token_usage?.inputTokens || null,
-        output_tokens: auditResult.token_usage?.outputTokens || null,
-        total_tokens: auditResult.token_usage?.totalTokens || null,
-        cost_usd: auditResult.token_usage?.costUsd || null,
         processing_mode: auditResult.processing_mode,
         // Key moments with timestamps
         key_moments: auditResult.key_moments || [],

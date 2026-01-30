@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
+import { DEMO_TENANT_ID } from '@/lib/constants'
 
 interface RouteParams {
   params: Promise<{ id: string }>
@@ -15,26 +16,18 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       .from('calls')
       .select('audio_url, tenant_id')
       .eq('id', id)
+      .eq('tenant_id', DEMO_TENANT_ID)  // will come from auth later
       .single()
 
     if (callError || !call) {
       return NextResponse.json({ error: 'Call not found' }, { status: 404 })
     }
 
-    // Extract the file path from the stored URL
-    // The audio_url is stored as the full public URL, we need to extract the path
-    const audioUrl = call.audio_url
-    if (!audioUrl) {
+    // audio_url now stores the path directly
+    const filePath = call.audio_url
+    if (!filePath) {
       return NextResponse.json({ error: 'No audio file' }, { status: 404 })
     }
-
-    // Extract path from URL: https://xxx.supabase.co/storage/v1/object/public/call-recordings/tenant-id/filename
-    const pathMatch = audioUrl.match(/call-recordings\/(.+)$/)
-    if (!pathMatch) {
-      return NextResponse.json({ error: 'Invalid audio path' }, { status: 400 })
-    }
-
-    const filePath = pathMatch[1]
 
     // Generate a signed URL (valid for 1 hour)
     const { data: signedUrlData, error: signedUrlError } = await supabase.storage

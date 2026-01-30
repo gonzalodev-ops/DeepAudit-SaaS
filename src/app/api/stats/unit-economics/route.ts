@@ -20,20 +20,21 @@ export async function GET() {
   try {
     const supabase = await createServiceClient()
 
-    // Obtener estadísticas de costos de auditorías
-    const { data: audits, error } = await supabase
-      .from('audits')
-      .select('cost_usd, calls!inner(tenant_id)')
-      .eq('calls.tenant_id', DEMO_TENANT_ID)
+    // Obtener estadísticas de costos de processing_logs
+    const { data: logs, error } = await supabase
+      .from('processing_logs')
+      .select('cost_usd, input_tokens, output_tokens')
+      .eq('tenant_id', DEMO_TENANT_ID)
+      .eq('status', 'completed')
       .not('cost_usd', 'is', null)
 
     if (error) {
-      console.error('Error fetching audit costs:', error)
+      console.error('Error fetching processing costs:', error)
       return NextResponse.json({ error: 'Failed to fetch stats' }, { status: 500 })
     }
 
-    const totalAudits = audits?.length || 0
-    const totalCostUsd = audits?.reduce((sum: number, a: { cost_usd: number | null }) => sum + (a.cost_usd || 0), 0) || 0
+    const totalAudits = logs?.length || 0
+    const totalCostUsd = logs?.reduce((sum: number, a: { cost_usd: number | null }) => sum + (a.cost_usd || 0), 0) || 0
 
     // Agregar overhead de infraestructura (consistente con CostsSummaryCard)
     const totalCostWithOverhead = totalCostUsd * (1 + INFRASTRUCTURE_OVERHEAD)

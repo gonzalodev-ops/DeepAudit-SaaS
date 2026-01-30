@@ -14,6 +14,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Storage path required' }, { status: 400 })
     }
 
+    const tenantId = DEMO_TENANT_ID // will come from auth later
+    if (!path.startsWith(`${tenantId}/`)) {
+      return NextResponse.json({ error: 'Invalid path' }, { status: 403 })
+    }
+
     const supabase = await createServiceClient()
 
     // Get tenant audit criteria and manual
@@ -33,18 +38,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to download file from storage' }, { status: 500 })
     }
 
-    // Get public URL for the file
-    const { data: urlData } = supabase.storage
-      .from('call-recordings')
-      .getPublicUrl(path)
-
     // Create call record with pending status
     const { data: call, error: callError } = await supabase
       .from('calls')
       .insert({
         tenant_id: DEMO_TENANT_ID,
         agent_id: DEMO_USER_ID,
-        audio_url: urlData.publicUrl,
+        audio_url: path,
         status: 'processing',
         metadata: { original_filename: filename || path },
       })
@@ -96,11 +96,6 @@ export async function POST(request: NextRequest) {
         areas_for_improvement: auditResult.areas_for_improvement,
         criteria_scores: auditResult.criteria_scores,
         recommendations: auditResult.recommendations,
-        // Token tracking
-        input_tokens: auditResult.token_usage?.inputTokens || null,
-        output_tokens: auditResult.token_usage?.outputTokens || null,
-        total_tokens: auditResult.token_usage?.totalTokens || null,
-        cost_usd: auditResult.token_usage?.costUsd || null,
         processing_mode: auditResult.processing_mode,
         key_moments: auditResult.key_moments || [],
         // Enterprise fields
