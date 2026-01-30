@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { processAudioWithGemini, ProcessingMode } from '@/lib/gemini'
-import { DEMO_TENANT_ID, DEMO_USER_ID } from '@/lib/constants'
+import { getTenantIdFromRequest } from '@/lib/auth/session'
+import { DEMO_USER_ID } from '@/lib/constants'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -14,7 +15,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Storage path required' }, { status: 400 })
     }
 
-    const tenantId = DEMO_TENANT_ID // will come from auth later
+    const tenantId = getTenantIdFromRequest(request)
     if (!path.startsWith(`${tenantId}/`)) {
       return NextResponse.json({ error: 'Invalid path' }, { status: 403 })
     }
@@ -25,7 +26,7 @@ export async function POST(request: NextRequest) {
     const { data: tenant } = await supabase
       .from('tenants')
       .select('audit_criteria, manual_text, default_processing_mode')
-      .eq('id', DEMO_TENANT_ID)
+      .eq('id', tenantId)
       .single()
 
     // Download file from storage
@@ -42,7 +43,7 @@ export async function POST(request: NextRequest) {
     const { data: call, error: callError } = await supabase
       .from('calls')
       .insert({
-        tenant_id: DEMO_TENANT_ID,
+        tenant_id: tenantId,
         agent_id: DEMO_USER_ID,
         audio_url: path,
         status: 'processing',

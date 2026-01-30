@@ -12,8 +12,6 @@ import { Settings } from 'lucide-react'
 export const dynamic = 'force-dynamic'
 
 interface AuditWithCalls {
-  cost_usd: number | null
-  total_tokens: number | null
   call_id: string
   calls: {
     tenant_id: string
@@ -22,33 +20,47 @@ interface AuditWithCalls {
   } | null
 }
 
+interface CostLog {
+  cost_usd: number | null
+  input_tokens: number | null
+  output_tokens: number | null
+  call_id: string
+}
+
 async function getReportStats(tenantId: string) {
   const supabase = await createServiceClient()
 
-  // Obtener datos de auditorías con costos
+  // Obtener datos de auditorías
   const { data: audits } = await supabase
     .from('audits')
-    .select(`
-      cost_usd,
-      total_tokens,
-      call_id,
-      calls!inner(tenant_id, duration_seconds, status)
-    `)
+    .select('call_id, calls!inner(tenant_id, duration_seconds, status)')
     .eq('calls.tenant_id', tenantId)
 
+  // Get cost data from processing_logs
+  const { data: costLogs } = await supabase
+    .from('processing_logs')
+    .select('cost_usd, input_tokens, output_tokens, call_id')
+    .eq('tenant_id', tenantId)
+    .eq('status', 'completed')
+    .not('cost_usd', 'is', null)
+
   const completedAudits = (audits as AuditWithCalls[] | null)?.filter(a => a.calls?.status === 'completed') || []
+  const costData = (costLogs as CostLog[] | null) || []
+
+  // Create cost map by call_id
+  const costMap = new Map(costData.map(c => [c.call_id, c]))
 
   // Calcular métricas de costos
-  const costs = completedAudits
-    .map(a => a.cost_usd)
+  const costs = costData
+    .map(c => c.cost_usd)
     .filter((c): c is number => c !== null && c !== undefined)
 
   const totalCostUSD = costs.reduce((sum, c) => sum + c, 0)
   const avgCostPerCall = costs.length > 0 ? totalCostUSD / costs.length : 0
 
   // Calcular tokens
-  const totalTokens = completedAudits.reduce((sum, a) => sum + (a.total_tokens || 0), 0)
-  const avgTokens = completedAudits.length > 0 ? Math.round(totalTokens / completedAudits.length) : 0
+  const totalTokens = costData.reduce((sum, c) => sum + ((c.input_tokens || 0) + (c.output_tokens || 0)), 0)
+  const avgTokens = costData.length > 0 ? Math.round(totalTokens / costData.length) : 0
 
   // Calcular minutos totales
   const totalMinutes = completedAudits.reduce((sum, a) => {

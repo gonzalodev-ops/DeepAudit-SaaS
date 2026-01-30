@@ -272,3 +272,27 @@ CREATE POLICY "Tenant isolation on users" ON public.users
   USING (tenant_id IN (SELECT tenant_id FROM users WHERE auth_id = auth.uid()));
 
 COMMIT;
+
+-- =============================================
+-- Auto-create users row on Supabase Auth signup
+-- =============================================
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.users (auth_id, email, full_name, tenant_id, role)
+  VALUES (
+    NEW.id,
+    NEW.email,
+    COALESCE(NEW.raw_user_meta_data->>'full_name', ''),
+    '00000000-0000-0000-0000-000000000001',  -- default tenant for POC
+    'agent'  -- default role
+  );
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Drop if exists to make idempotent
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();

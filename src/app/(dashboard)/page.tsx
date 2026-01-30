@@ -26,10 +26,17 @@ async function getStats() {
     supabase.from('calls').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
   ])
 
-  // Obtener scores y datos de tokens
+  // Obtener scores
   const auditDataResult = await supabase
     .from('audits')
-    .select('overall_score, cost_usd, total_tokens, input_tokens, output_tokens, call_id')
+    .select('overall_score, call_id')
+
+  // Get cost data from processing_logs
+  const costDataResult = await supabase
+    .from('processing_logs')
+    .select('cost_usd, input_tokens, output_tokens, call_id')
+    .eq('status', 'completed')
+    .not('cost_usd', 'is', null)
 
   // Obtener duraciones de las llamadas completadas
   const callsWithDuration = await supabase
@@ -40,11 +47,17 @@ async function getStats() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const audits = auditDataResult.data || []
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const costData = costDataResult.data || []
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const callsDuration = callsWithDuration.data || []
 
   // Crear mapa de duraciones
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const durationMap = new Map(callsDuration.map((c: any) => [c.id, c.duration_seconds]))
+
+  // Crear mapa de costos por call_id
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const costMap = new Map(costData.map((c: any) => [c.call_id, c]))
 
   // Calcular score promedio
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -53,28 +66,27 @@ async function getStats() {
     ? (scores.reduce((a: number, b: number) => a + b, 0) / scores.length).toFixed(1)
     : '0'
 
-  // Calcular costo real basado en datos de tokens
+  // Calcular costo real basado en datos de processing_logs
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const costs = audits.map((a: any) => a.cost_usd).filter((c: number | null) => c !== null) as number[]
+  const costs = costData.map((c: any) => c.cost_usd).filter((c: number | null) => c !== null) as number[]
   const totalCostUSD = costs.reduce((a: number, b: number) => a + b, 0)
   const avgCostPerCall = costs.length > 0 ? totalCostUSD / costs.length : DEFAULT_COST_PER_CALL_USD
 
   // Calcular tokens totales
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const totalTokens = audits.reduce((sum: number, a: any) => sum + (a.total_tokens || 0), 0)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const avgTokens = audits.length > 0 ? Math.round(totalTokens / audits.length) : 0
+  const totalTokens = costData.reduce((sum: number, c: any) => sum + ((c.input_tokens || 0) + (c.output_tokens || 0)), 0)
+  const avgTokens = costData.length > 0 ? Math.round(totalTokens / costData.length) : 0
 
   // Calcular costo por minuto
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let totalMinutes = 0
   let costForMinuteCalc = 0
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   audits.forEach((audit: any) => {
     const duration = durationMap.get(audit.call_id) as number | undefined
-    if (duration && typeof duration === 'number' && audit.cost_usd) {
+    const cost = costMap.get(audit.call_id)
+    if (duration && typeof duration === 'number' && cost?.cost_usd) {
       totalMinutes += duration / 60
-      costForMinuteCalc += audit.cost_usd
+      costForMinuteCalc += cost.cost_usd
     }
   })
   const costPerMinuteUSD = totalMinutes > 0 ? costForMinuteCalc / totalMinutes : 0

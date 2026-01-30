@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
-import { DEMO_TENANT_ID } from '@/lib/constants'
+import { getTenantIdFromRequest } from '@/lib/auth/session'
 
 interface RouteParams {
   params: Promise<{ id: string }>
@@ -9,6 +9,7 @@ interface RouteParams {
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     const { id } = await params
+    const tenantId = getTenantIdFromRequest(request)
     const supabase = await createServiceClient()
 
     // Get the call to find the audio path
@@ -16,7 +17,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       .from('calls')
       .select('audio_url, tenant_id')
       .eq('id', id)
-      .eq('tenant_id', DEMO_TENANT_ID)  // will come from auth later
+      .eq('tenant_id', tenantId)  // will come from auth later
       .single()
 
     if (callError || !call) {

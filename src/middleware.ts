@@ -1,15 +1,25 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
+import { resolveTenant } from '@/lib/auth/tenant-resolver'
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   // --- API routes: validate X-API-Key ---
   if (pathname.startsWith('/api/')) {
+    // Skip API key check for auth routes
+    if (pathname.startsWith('/api/auth/')) {
+      return NextResponse.next()
+    }
+
     const apiKey = request.headers.get('x-api-key')
     const validKey = process.env.INTERNAL_API_KEY
 
+    // In development, skip API key check if not configured
     if (!validKey) {
+      if (process.env.NODE_ENV === 'development') {
+        return NextResponse.next()
+      }
       console.error('INTERNAL_API_KEY not configured')
       return NextResponse.json({ error: 'Server misconfigured' }, { status: 500 })
     }
@@ -18,12 +28,22 @@ export async function middleware(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // API routes pass through — tenant_id comes from request body or is resolved server-side
+    // Resolve tenant from hostname and inject header
+    const hostname = request.headers.get('host') || 'localhost:3000'
+    const tenant = await resolveTenant(hostname)
+    if (tenant) {
+      const requestHeaders = new Headers(request.headers)
+      requestHeaders.set('x-tenant-id', tenant.tenantId)
+      return NextResponse.next({
+        request: { headers: requestHeaders },
+      })
+    }
+
     return NextResponse.next()
   }
 
   // --- Auth routes: allow without session ---
-  if (pathname.startsWith('/login') || pathname.startsWith('/signup') || pathname.startsWith('/auth/')) {
+  if (pathname.startsWith('/login') || pathname.startsWith('/signup') || pathname.startsWith('/forgot-password') || pathname.startsWith('/reset-password') || pathname.startsWith('/auth/')) {
     return NextResponse.next()
   }
 
@@ -64,6 +84,13 @@ export async function middleware(request: NextRequest) {
     const loginUrl = new URL('/login', request.url)
     loginUrl.searchParams.set('redirect', pathname)
     return NextResponse.redirect(loginUrl)
+  }
+
+  // Inject tenant_id for downstream server components
+  const hostname = request.headers.get('host') || 'localhost:3000'
+  const tenant = await resolveTenant(hostname)
+  if (tenant) {
+    response.headers.set('x-tenant-id', tenant.tenantId)
   }
 
   return response

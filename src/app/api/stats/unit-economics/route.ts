@@ -1,6 +1,6 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
-import { DEMO_TENANT_ID } from '@/lib/constants'
+import { getTenantIdFromRequest } from '@/lib/auth/session'
 import { showFinancialData } from '@/lib/feature-flags'
 
 // Constantes para cálculos (consistente con CostsSummaryCard)
@@ -10,7 +10,7 @@ const HUMAN_AUDIT_COST_MXN = 50 // Costo promedio de auditoría humana
 const HUMAN_AUDIT_PERCENTAGE = 1.5 // % que audita un humano (estándar industria 1-2%)
 const AI_AUDIT_PERCENTAGE = 100 // % que audita la IA
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   if (!showFinancialData()) {
     return NextResponse.json(
       { error: 'Financial data is not available in PoC mode' },
@@ -18,13 +18,14 @@ export async function GET() {
     )
   }
   try {
+    const tenantId = getTenantIdFromRequest(request)
     const supabase = await createServiceClient()
 
     // Obtener estadísticas de costos de processing_logs
     const { data: logs, error } = await supabase
       .from('processing_logs')
       .select('cost_usd, input_tokens, output_tokens')
-      .eq('tenant_id', DEMO_TENANT_ID)
+      .eq('tenant_id', tenantId)
       .eq('status', 'completed')
       .not('cost_usd', 'is', null)
 

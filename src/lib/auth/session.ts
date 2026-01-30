@@ -35,13 +35,13 @@ export async function getAuthContext(): Promise<AuthContext | null> {
 
     // Look up the user in our users table to get tenant_id and role
     const serviceClient = await createServiceClient()
-    const { data: dbUser } = await serviceClient
+    const { data: dbUser, error: dbError } = await serviceClient
       .from('users')
       .select('id, tenant_id, email, full_name, role')
       .eq('auth_id', user.id)
       .single()
 
-    if (!dbUser || !dbUser.tenant_id) return null
+    if (dbError || !dbUser || !dbUser.tenant_id) return null
 
     return {
       userId: dbUser.id,

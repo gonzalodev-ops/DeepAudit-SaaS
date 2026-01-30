@@ -83,7 +83,19 @@ async function getCallWithAudit(id: string) {
     .eq('call_id', id)
     .single()
 
-  return { ...call, audit }
+  // Fetch cost data from processing_logs for this call
+  const { data: costData } = await supabase
+    .from('processing_logs')
+    .select('cost_usd, input_tokens, output_tokens')
+    .eq('call_id', id)
+    .eq('status', 'completed')
+
+  const totalCost = costData?.reduce((sum, l) => sum + (l.cost_usd || 0), 0) || 0
+  const totalInputTokens = costData?.reduce((sum, l) => sum + (l.input_tokens || 0), 0) || 0
+  const totalOutputTokens = costData?.reduce((sum, l) => sum + (l.output_tokens || 0), 0) || 0
+  const totalTokens = totalInputTokens + totalOutputTokens
+
+  return { ...call, audit, costInfo: { totalCost, totalInputTokens, totalOutputTokens, totalTokens } }
 }
 
 function ScoreCircle({ score }: { score: number }) {
@@ -196,6 +208,7 @@ export default async function CallDetailPage({ params }: PageProps) {
   }
 
   const audit = call.audit
+  const costInfo = call.costInfo
   const isProcessing = call.status === 'processing'
   const isFailed = call.status === 'failed'
   const isPending = call.status === 'pending'
@@ -441,7 +454,7 @@ export default async function CallDetailPage({ params }: PageProps) {
               )}
 
               {/* Token Usage Info */}
-              {audit.total_tokens && (
+              {costInfo.totalTokens > 0 && (
                 <Card>
                   <CardHeader className="pb-3">
                     <CardTitle className="text-base flex items-center gap-2">
@@ -453,15 +466,15 @@ export default async function CallDetailPage({ params }: PageProps) {
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <p className="text-sm text-muted-foreground">Tokens Input</p>
-                        <p className="text-lg font-medium">{audit.input_tokens?.toLocaleString() || '-'}</p>
+                        <p className="text-lg font-medium">{costInfo.totalInputTokens.toLocaleString()}</p>
                       </div>
                       <div>
                         <p className="text-sm text-muted-foreground">Tokens Output</p>
-                        <p className="text-lg font-medium">{audit.output_tokens?.toLocaleString() || '-'}</p>
+                        <p className="text-lg font-medium">{costInfo.totalOutputTokens.toLocaleString()}</p>
                       </div>
                       <div>
                         <p className="text-sm text-muted-foreground">Total Tokens</p>
-                        <p className="text-lg font-medium">{audit.total_tokens?.toLocaleString() || '-'}</p>
+                        <p className="text-lg font-medium">{costInfo.totalTokens.toLocaleString()}</p>
                       </div>
                       <div>
                         <p className="text-sm text-muted-foreground flex items-center gap-1">
@@ -469,10 +482,10 @@ export default async function CallDetailPage({ params }: PageProps) {
                           Costo
                         </p>
                         <p className="text-lg font-medium text-emerald-600">
-                          ${audit.cost_usd?.toFixed(4) || '0.0000'} USD
+                          ${costInfo.totalCost.toFixed(4)} USD
                         </p>
                         <p className="text-sm text-emerald-600">
-                          ${((audit.cost_usd || 0) * 20).toFixed(2)} MXN
+                          ${(costInfo.totalCost * 20).toFixed(2)} MXN
                         </p>
                         <p className="text-xs text-muted-foreground mt-1">
                           TC: $20 MXN = $1 USD
