@@ -90,9 +90,9 @@ async function getCallWithAudit(id: string) {
     .eq('call_id', id)
     .eq('status', 'completed')
 
-  const totalCost = costData?.reduce((sum, l) => sum + (l.cost_usd || 0), 0) || 0
-  const totalInputTokens = costData?.reduce((sum, l) => sum + (l.input_tokens || 0), 0) || 0
-  const totalOutputTokens = costData?.reduce((sum, l) => sum + (l.output_tokens || 0), 0) || 0
+  const totalCost = costData?.reduce((sum: number, l: { cost_usd: number | null }) => sum + (l.cost_usd || 0), 0) || 0
+  const totalInputTokens = costData?.reduce((sum: number, l: { input_tokens: number | null }) => sum + (l.input_tokens || 0), 0) || 0
+  const totalOutputTokens = costData?.reduce((sum: number, l: { output_tokens: number | null }) => sum + (l.output_tokens || 0), 0) || 0
   const totalTokens = totalInputTokens + totalOutputTokens
 
   return { ...call, audit, costInfo: { totalCost, totalInputTokens, totalOutputTokens, totalTokens } }

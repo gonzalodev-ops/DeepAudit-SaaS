@@ -11,8 +11,8 @@ export default async function DashboardLayout({
   return (
     <div className="flex h-screen bg-background">
       <Sidebar
-        userName={authContext?.user?.full_name || authContext?.user?.email || null}
-        userEmail={authContext?.user?.email || null}
+        userName={authContext?.fullName || authContext?.email || null}
+        userEmail={authContext?.email || null}
       />
       <main className="flex-1 overflow-auto">
         <div className="min-h-full p-6 lg:p-8">

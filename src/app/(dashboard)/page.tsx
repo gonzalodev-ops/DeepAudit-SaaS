@@ -57,7 +57,7 @@ async function getStats() {
 
   // Crear mapa de costos por call_id
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const costMap = new Map(costData.map((c: any) => [c.call_id, c]))
+  const costMap = new Map<string, any>(costData.map((c: any) => [c.call_id, c]))
 
   // Calcular score promedio
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
