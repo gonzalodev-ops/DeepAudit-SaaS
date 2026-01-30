@@ -282,22 +282,120 @@ Al enviar **texto** a Gemini en vez de audio:
 
 ---
 
-## 10. Recomendación Final
+## 10. Evaluación del Cliente (Sentimiento e Inferencia)
 
-**Opción B: Deepgram (transcripción) + Gemini Flash (evaluación)** es la arquitectura que recomiendo:
+Un requerimiento adicional es no solo evaluar al agente, sino también inferir el comportamiento y reacción del cliente: si se frustra, se calma, se enoja, etc. Esto tiene implicaciones de arquitectura:
 
-1. **Resuelve los 3 dolores** de Callfast con precisión
-2. **Silencios confiables** — código determinístico, no inferencia de IA
-3. **Costo razonable** — ~$0.79 MXN/llamada vs $50 MXN humano
-4. **POC gratuito** — los $200 de crédito de Deepgram cubren las 150 llamadas
-5. **Escala** — la arquitectura funciona igual para 150 que para 3.5M llamadas
-6. **Mantiene lo que funciona** — Gemini sigue haciendo evaluación + resumen
-7. **Separa responsabilidades** — cada servicio hace lo que mejor sabe hacer
+### ¿Qué necesitamos del canal del cliente?
 
-### Próximos pasos sugeridos:
+| Análisis | Fuente | Método |
+|---|---|---|
+| **Sentimiento por segmento** | Transcripción canal cliente | LLM (Gemini/LeMUR) sobre texto |
+| **Tono de voz / prosodia** | Audio canal cliente | Modelo de audio (futuro) |
+| **Escalación emocional** | Ambos canales correlacionados | LLM comparando evolución |
+| **Resultado de la llamada** | Contexto completo | LLM sobre transcripción completa |
 
-1. Validar el formato exacto de audio que entrega Callfast (MP3 estéreo, sample rate, bitrate)
-2. Crear cuenta Deepgram y probar con 2-3 llamadas de muestra
-3. Implementar el pipeline de detección de silencios
-4. Adaptar el pipeline de Gemini para recibir texto en vez de audio
-5. Correr las 100-150 llamadas del POC
+### Ventaja de canales separados para esto:
+
+Con canales separados podemos analizar el sentimiento del cliente **sin contaminación** de la voz del agente. Esto es más preciso que diarización, donde los segmentos pueden tener bleeding entre hablantes.
+
+### Opciones de análisis de sentimiento:
+
+| Servicio | Feature | Costo adicional |
+|---|---|---|
+| **AssemblyAI** | Sentiment Analysis built-in (por utterance) | +$0.02/min |
+| **AssemblyAI LeMUR** | Análisis personalizado sobre transcripción | ~$0.003/min |
+| **Deepgram** | Sentiment Analysis (beta) | Incluido |
+| **Gemini Flash** | Análisis vía prompt sobre texto | ~$0.001 (ya lo usamos) |
+
+**Nota:** Para el POC, el análisis de sentimiento vía Gemini sobre la transcripción texto es suficiente y no agrega costo. Features dedicadas de sentiment se evaluarán para MVP.
+
+---
+
+## 11. Comparativa Head-to-Head: AssemblyAI vs Deepgram
+
+Ambos servicios son candidatos fuertes. En vez de descartar uno prematuramente, haremos una **evaluación lado a lado con audio real** de Callfast.
+
+### 11.1 Comparativa Teórica
+
+| Criterio | AssemblyAI | Deepgram |
+|---|---|---|
+| **Precio base** | $0.0025/min (Universal) | $0.0065/min (Growth) |
+| **Precio efectivo (estéreo)** | ~$0.005/min (cobra por canal) | ~$0.0065/min (incluido) |
+| **Precio x llamada 5 min** | $0.025 USD | $0.0325 USD |
+| **Multicanal nativo** | Sí | Sí |
+| **Timestamps por palabra** | Sí, con canal por palabra | Sí, con canal por utterance |
+| **Sentiment Analysis** | Sí (add-on $0.02/min) | Sí (beta, incluido) |
+| **LLM integrado** | **LeMUR** (resumen, Q&A, análisis) | No |
+| **Español** | Sí (Universal, 99 idiomas) | Sí (Nova-3) |
+| **Reputación** | Estándar en startups/developers | Fuerte en enterprise/call centers |
+| **Free credits** | $50 | $200 |
+| **Documentación** | Excelente | Muy buena |
+| **SDK/API** | REST + SDKs (Python, JS, etc.) | REST + SDKs |
+
+### 11.2 Ventajas Únicas de Cada Uno
+
+**AssemblyAI:**
+- **LeMUR**: LLM integrado que puede hacer resumen y análisis directamente sobre la transcripción. Potencialmente reemplaza a Gemini para el resumen, simplificando a **un solo proveedor** para transcripción + resumen.
+- Precio base más bajo.
+- Audio Intelligence add-ons: topic detection, content moderation, PII redaction.
+- Muy buena documentación y developer experience.
+
+**Deepgram:**
+- $200 de crédito gratis (vs $50 de AssemblyAI) — cubre todo el POC holgadamente.
+- Multicanal no cobra extra por canal.
+- Más opciones de modelos (Nova-3, Enhanced, Base).
+- Streaming real-time con multicanal (para futuro monitoreo en vivo).
+- On-premises disponible para enterprise.
+
+### 11.3 La Pregunta sobre LeMUR
+
+Si LeMUR de AssemblyAI puede hacer el resumen + evaluación con calidad comparable a Gemini, el pipeline se simplificaría a:
+
+```
+Opción Pipeline A (dos proveedores):
+  Audio → AssemblyAI/Deepgram (STT) → Gemini (evaluación + resumen)
+
+Opción Pipeline B (un proveedor — solo AssemblyAI):
+  Audio → AssemblyAI (STT + LeMUR para resumen + evaluación)
+```
+
+**Pipeline B es más simple**, pero depende de que LeMUR tenga la calidad suficiente para evaluación con rúbrica. Esto se validará en la prueba comparativa.
+
+### 11.4 Plan de Evaluación Comparativa
+
+Cuando tengamos las muestras de audio de Callfast (previo a las 100-150 del POC), tomaremos **5-10 llamadas** y correremos:
+
+| Prueba | Qué medimos |
+|---|---|
+| **Transcripción multicanal** | Precisión del texto en español, manejo de jerga técnica (modems, ISP) |
+| **Timestamps** | Precisión para detección de silencios (comparar gaps detectados) |
+| **Atribución de canal** | Que cada utterance esté en el canal correcto |
+| **Sentimiento** | Calidad del sentiment analysis por utterance del cliente |
+| **LeMUR vs Gemini** | Calidad del resumen y evaluación con la misma rúbrica |
+| **Latencia** | Tiempo de procesamiento por llamada |
+| **Costo real** | Costo efectivo medido (no teórico) |
+
+**Criterio de decisión:** La calidad de transcripción en español es el factor más importante. Si ambos son comparables en calidad, el precio y la simplicidad del pipeline decidirán.
+
+---
+
+## 12. Recomendación Actualizada
+
+**Arquitectura híbrida confirmada** (STT dedicado + LLM para evaluación), pero el servicio STT se decidirá tras evaluación comparativa:
+
+1. **Candidatos finales:** AssemblyAI vs Deepgram
+2. **Evaluación:** Side-by-side con 5-10 llamadas reales de Callfast
+3. **Decisión basada en datos:** calidad en español > precio > simplicidad
+4. **LeMUR de AssemblyAI** se evaluará como posible reemplazo de Gemini para resumen
+
+### Próximos pasos:
+
+1. Validar formato de audio de Callfast (MP3 estéreo, sample rate, bitrate)
+2. Obtener 5-10 llamadas de muestra para evaluación comparativa
+3. Crear cuentas en AssemblyAI y Deepgram (créditos gratis)
+4. Correr evaluación side-by-side documentada
+5. Decidir servicio STT basado en resultados
+6. Evaluar si LeMUR puede sustituir a Gemini para resumen/evaluación
+7. Implementar pipeline de detección de silencios
+8. Correr las 100-150 llamadas del POC
