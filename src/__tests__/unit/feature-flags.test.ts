@@ -114,10 +114,10 @@ describe('Feature Flags', () => {
   })
 
   describe('showFinancialData', () => {
-    it('returns false in poc mode', async () => {
+    it('returns true in poc mode (financial data visible in all modes)', async () => {
       process.env.NEXT_PUBLIC_PRODUCT_MODE = 'poc'
       const { showFinancialData } = await import('@/lib/feature-flags')
-      expect(showFinancialData()).toBe(false)
+      expect(showFinancialData()).toBe(true)
     })
 
     it('returns true in standard mode', async () => {

@@ -12,12 +12,14 @@ import {
   TrendingUp,
   FileAudio,
   Shield,
-  GitCompare
+  GitCompare,
+  Activity,
 } from 'lucide-react'
 
 const baseNavigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
   { name: 'Llamadas', href: '/calls', icon: Phone },
+  { name: 'Operaciones', href: '/operaciones', icon: Activity },
   { name: 'Subir Audio', href: '/upload', icon: Upload },
   { name: 'Configuracion', href: '/settings', icon: Settings },
 ]
