@@ -1,7 +1,7 @@
 'use client'
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { getEnterprisConfig } from '@/lib/feature-flags'
+import { getEnterpriseConfig } from '@/lib/feature-flags'
 import { CheckCircle2 } from 'lucide-react'
 
 // Colores Enterprise - Paleta más vibrante
@@ -18,7 +18,7 @@ interface KPICoverageCardProps {
 }
 
 export function KPICoverageCard({ totalCalls, completedAudits }: KPICoverageCardProps) {
-  const config = getEnterprisConfig()
+  const config = getEnterpriseConfig()
   const coveragePercentage = totalCalls > 0 ? Math.round((completedAudits / totalCalls) * 100) : 100
 
   // Radio y propiedades del gráfico de anillo

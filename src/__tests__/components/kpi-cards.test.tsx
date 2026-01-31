@@ -4,14 +4,14 @@
 
 import React from 'react'
 import { render, screen } from '@testing-library/react'
-import { KpiCoverageCard } from '@/components/enterprise/kpi-coverage-card'
-import { KpiMoneySavedCard } from '@/components/enterprise/kpi-money-saved-card'
-import { KpiCriticalAlerts } from '@/components/enterprise/kpi-critical-alerts'
+import { KPICoverageCard as KpiCoverageCard } from '@/components/enterprise/kpi-coverage-card'
+import { KPIMoneySavedCard as KpiMoneySavedCard } from '@/components/enterprise/kpi-money-saved-card'
+import { KPICriticalAlertsCard as KpiCriticalAlerts } from '@/components/enterprise/kpi-critical-alerts'
 
 describe('KpiCoverageCard', () => {
   it('renders 100% coverage text', () => {
     render(<KpiCoverageCard totalCalls={100} completedAudits={100} />)
-    expect(screen.getByText(/100%/)).toBeInTheDocument()
+    expect(screen.getByText(/100% Auditado/)).toBeInTheDocument()
   })
 
   it('renders comparison with human audit', () => {
@@ -27,23 +27,23 @@ describe('KpiCoverageCard', () => {
 
 describe('KpiMoneySavedCard', () => {
   it('renders money saved in MXN format', () => {
-    render(<KpiMoneySavedCard retainedClients={3} ltv={5000} />)
+    render(<KpiMoneySavedCard retainedClients={3} customLTV={5000} />)
     // 3 clients * 5000 = 15000 MXN
     expect(screen.getByText(/15.*000/)).toBeInTheDocument()
   })
 
   it('renders number of clients saved', () => {
-    render(<KpiMoneySavedCard retainedClients={3} ltv={5000} />)
+    render(<KpiMoneySavedCard retainedClients={3} customLTV={5000} />)
     expect(screen.getByText(/3/)).toBeInTheDocument()
   })
 
   it('renders disclaimer note', () => {
-    render(<KpiMoneySavedCard retainedClients={3} ltv={5000} />)
+    render(<KpiMoneySavedCard retainedClients={3} customLTV={5000} />)
     expect(screen.getByText(/Estimación/i)).toBeInTheDocument()
   })
 
   it('renders $0 when no clients retained', () => {
-    render(<KpiMoneySavedCard retainedClients={0} ltv={5000} />)
+    render(<KpiMoneySavedCard retainedClients={0} customLTV={5000} />)
     expect(screen.getByText(/\$0/)).toBeInTheDocument()
   })
 
@@ -57,7 +57,7 @@ describe('KpiMoneySavedCard', () => {
 describe('KpiCriticalAlerts', () => {
   it('renders critical alert count', () => {
     render(<KpiCriticalAlerts criticalAlerts={2} highRiskAlerts={3} mediumRiskAlerts={5} />)
-    expect(screen.getByText('2')).toBeInTheDocument()
+    expect(screen.getByText(/2 Critica/)).toBeInTheDocument()
   })
 
   it('renders "Requieren atención" text when alerts exist', () => {

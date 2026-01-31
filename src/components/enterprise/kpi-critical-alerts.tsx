@@ -132,7 +132,7 @@ export function KPICriticalAlertsCard({
                   className="w-3 h-3 rounded-full"
                   style={{ backgroundColor: ENTERPRISE_COLORS.warning }}
                 />
-                <span className="text-sm">Alto</span>
+                <span className="text-sm">Alto: {highRiskAlerts}</span>
               </div>
               <Badge
                 variant="outline"
@@ -173,7 +173,7 @@ export function KPICriticalAlertsCard({
                 />
                 <div>
                   <p className="text-sm" style={{ color: ENTERPRISE_COLORS.critical }}>
-                    <strong>Accion requerida:</strong> Revise las {totalAlerts} alerta{totalAlerts !== 1 ? 's' : ''} pendiente{totalAlerts !== 1 ? 's' : ''} en el Centro de Comando.
+                    <strong>Requieren atención:</strong> Revise las {totalAlerts} alerta{totalAlerts !== 1 ? 's' : ''} pendiente{totalAlerts !== 1 ? 's' : ''} en el Centro de Comando.
                   </p>
                   <p className="text-xs mt-1 opacity-80" style={{ color: ENTERPRISE_COLORS.critical }}>
                     PROFECO puede multar hasta $4.3M MXN (Art. 128 LFPC)
