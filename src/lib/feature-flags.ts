@@ -13,8 +13,7 @@ export const isPocMode = (): boolean => {
 }
 
 export const showFinancialData = (): boolean => {
-  // Financial data is visible in all modes — needed for POC demos and metrics
-  return true
+  return getProductMode() !== 'poc'
 }
 
 export const getBranding = () => {

@@ -1,6 +1,33 @@
 # 01 — Arquitectura Callfast: Multi-Tenant en DeepAudit-SaaS
 
-*Spec v2 — Actualización 31 de enero de 2026*
+*Spec v3 — Actualización 31 de enero de 2026*
+
+---
+
+## Documentos de Referencia
+
+Los documentos originales del cliente están en `/Fasst/`:
+- `arquitectura-tecnica-roadmap.docx.md` — Visión de producto, roadmap, análisis técnico
+- `guia-interna-callfast-v3.docx.md` — Contexto del cliente, problemas, entregables POC
+
+---
+
+## Los 3 Entregables del POC (del cliente)
+
+Estos son los 3 puntos que el proveedor actual de Callfast NO ha resuelto y que definen el éxito del POC:
+
+| # | Entregable | Descripción | Estado |
+|---|---|---|---|
+| 1 | **Detección de silencios** | Medir tiempos muertos del agente. Umbral: 30s. Diferenciar agente vs cliente. | ✅ Detector implementado + 9 tests. ⏳ Frontend (timeline visual) |
+| 2 | **Validación comercial** | Verificar que lo ofrecido coincida con la oferta vigente. POC: RAG estático con una campaña y oferta fija. | ⏳ Pendiente — requiere oferta comercial como contexto en prompt de Gemini |
+| 3 | **Resumen estructurado** | Qué se acordó en la llamada y qué debe reflejarse en el sistema del cliente (sin escuchar toda la llamada). | ⏳ Pendiente — requiere formato específico de Callfast (esperando materiales) |
+
+### Entregables Adicionales POC
+
+| # | Entregable | Descripción | Estado |
+|---|---|---|---|
+| 4 | **Dashboard básico** | Visualización de resultados | ✅ Implementado |
+| 5 | **Prosodia (exploratoria)** | Evaluar si Gemini puede inferir estado anímico desde la transcripción (sin análisis de audio directo). Se valida con pruebas sobre audio real. | ⏳ Pendiente — depende de pruebas con transcripciones reales |
 
 ---
 
@@ -20,7 +47,11 @@
 | Observability (processing_logs) | ✅ Implementado + 3 tests |
 | Usage tracker (billing) | ✅ Implementado |
 | Cost data migration (audits → processing_logs) | ✅ Implementado |
+| Página /operaciones (métricas operativas) | ✅ Implementado (sin datos financieros en POC) |
+| API /api/stats/operations | ✅ Implementado |
+| Email redirect dinámico (signup) | ✅ Implementado |
 | Tests (220 total, 0 fallos) | ✅ Todo verde |
+| **Modo admin (is_admin en BD)** | ⏳ Pendiente |
 | **STT client real** | ⏳ Pendiente (depende de evaluación con audio) |
 | **Pipeline orchestrator real** | ⏳ Pendiente (depende de STT client) |
 | **processTextWithGemini()** | ⏳ Pendiente |
@@ -28,6 +59,42 @@
 | **Contenido sintético para POC** | ⏳ Pendiente (BLOQUEANTE) |
 | **Frontend: polling, silencios, transcript por canal** | ⏳ Pendiente |
 | **Infraestructura deploy (migración, env vars, dominio)** | ⏳ Pendiente |
+
+---
+
+## Modo Admin
+
+El modo admin es independiente del product mode (poc/standard/enterprise). Permite al owner de DeepAudit ver información interna que NO debe ser visible para el cliente:
+
+- Costos por llamada (USD/MXN)
+- Tokens consumidos y costo
+- Proveedores utilizados (Gemini, STT, etc.)
+- Unit economics completos
+- Estructura de costos del pipeline
+
+**Implementación:** Campo `is_admin` en tabla `users` en BD. Se consulta al cargar la sesión. La UI condiciona la visibilidad de datos financieros con este flag en lugar de con el product mode.
+
+**Lo que el cliente SÍ ve en /operaciones (sin admin):**
+- Llamadas procesadas, auditorías completadas
+- Minutos de audio procesados
+- Tasa de éxito del pipeline
+- Actividad reciente (pasos completados/fallidos)
+
+**Lo que SOLO ve el admin:**
+- Todo lo anterior MÁS costos, tokens, proveedores, unit economics
+- Página de Impacto Financiero completa
+
+---
+
+## Modos de Producto (feature flags)
+
+| Modo | Propósito | Datos financieros | Funciones enterprise |
+|---|---|---|---|
+| `poc` | Demo para Callfast | ❌ Ocultos (salvo admin) | Según convenga |
+| `standard` | Producto base | ✅ Visibles | ❌ |
+| `enterprise` | Producto completo | ✅ Visibles | ✅ Alertas legales, KPIs, integraciones |
+
+Variable: `NEXT_PUBLIC_PRODUCT_MODE=poc`
 
 ---
 
@@ -40,11 +107,13 @@
 | **Procesamiento async** | Supabase Edge Functions (Vercel Hobby tiene 60s timeout) |
 | **STT** | AssemblyAI vs Deepgram — se decide tras evaluación side-by-side con audio real |
 | **Fallback entre STT** | No para MVP. Solo un proveedor. |
-| **Campañas en POC** | Hardcoded via SQL, sin UI CRUD |
+| **Campañas en POC** | Hardcoded via SQL, sin UI CRUD. Una sola campaña. |
+| **Oferta comercial en POC** | Estática. Texto de la oferta vigente como contexto en prompt. |
 | **Infraestructura** | Cloud/Serverless. No on-prem. |
 | **Auth** | Supabase Auth (email/password) + tenant resolution por hostname + RLS real ✅ |
 | **Cost tracking** | Movido de `audits` a `processing_logs` (por paso) + `usage_logs` (billing) ✅ |
 | **BYOAK** | Infraestructura crypto lista, no activada para POC ✅ |
+| **Modo admin** | Campo `is_admin` en BD. Independiente del product mode. |
 
 ---
 
@@ -82,6 +151,8 @@ Audio estéreo MP3
     2. STT Service → transcripción por canal      ⏳ Solo interfaces (src/lib/stt/types.ts)
     3. Silence Detector → silence_events[]        ✅ (src/lib/silence/detector.ts)
     4. Gemini Flash (TEXTO, no audio) → evaluación ⏳ processTextWithGemini() no existe
+       - Incluye: evaluación de calidad, validación vs oferta comercial,
+         resumen estructurado de acuerdos
   ↓
   Guarda resultados en DB
   ↓
@@ -112,8 +183,13 @@ Se necesita agregar `processTextWithGemini()` junto al existente `processAudioWi
 La nueva función recibe:
 - Transcripción etiquetada por canal: `[Agente 0:00] Hola...\n[Cliente 0:03] Buenas...`
 - Resumen de silencios: `3 silencios del agente: 0:45-1:18 (33s), ...`
-- Contexto de oferta comercial (RAG, para fase posterior)
+- **Oferta comercial vigente** (texto estático para POC) — para validación comercial
 - Criterios y manual (igual que hoy)
+
+La función debe producir como output:
+- Evaluación de calidad (scores, fortalezas, áreas de mejora) — igual que hoy
+- **Validación comercial:** ¿Lo ofrecido coincide con la oferta vigente? Discrepancias encontradas.
+- **Resumen estructurado:** Qué se acordó, qué debe reflejarse en sistema, compromisos adquiridos.
 
 ---
 
@@ -157,6 +233,10 @@ Frontend                    Vercel API                  Supabase Edge Function
 - `calls`: `stt_transcript_url`, `channel_count`, `campaign_id`, `subcampaign_id`
 - `audits`: `agent_transcript`, `client_transcript`, `total_silence_seconds`, `silence_count`, `pipeline_type`
 
+### Columna pendiente ⏳
+
+- `users`: `is_admin` (boolean, default false) — Para modo admin
+
 ### Cost tracking ✅ Migrado
 
 | Tabla | Propósito |
@@ -187,7 +267,8 @@ El archivo SQL existe pero NO se ha aplicado a Supabase. Ejecutar antes del depl
 | `POST /api/calls/process` | ✅ path validation, tenant scoping |
 | `GET /api/calls/[id]/audio` | ✅ tenant scoped, signedUrl |
 | `POST /api/calls/[id]/regenerate` | ✅ sin cost columns |
-| `GET /api/stats/unit-economics` | ✅ queries processing_logs |
+| `GET /api/stats/unit-economics` | ✅ queries processing_logs (bloqueado en POC) |
+| `GET /api/stats/operations` | ✅ métricas operativas del pipeline |
 | `POST /api/auth/logout` | ✅ |
 | `GET /auth/callback` | ✅ |
 
@@ -197,6 +278,7 @@ El archivo SQL existe pero NO se ha aplicado a Supabase. Ejecutar antes del depl
 |---|---|---|
 | `GET /api/calls/[id]/status` | Polling de estado de procesamiento | Alta (POC) |
 | `GET /api/calls/[id]/silences` | Eventos de silencio de una llamada | Media (POC) |
+| `GET /api/auth/me` | Info del usuario incluyendo is_admin | Alta (admin mode) |
 | `CRUD /api/campaigns` | Gestión de campañas | Baja (MVP) |
 | `POST /api/calls/batch-upload` | Subir múltiples llamadas | Baja (MVP) |
 
@@ -210,18 +292,32 @@ El archivo SQL existe pero NO se ha aplicado a Supabase. Ejecutar antes del depl
 
 ## 5. Frontend
 
+### Páginas implementadas ✅
+
+| Página | Ruta | Estado |
+|---|---|---|
+| Dashboard | `/` | ✅ KPIs, llamadas recientes |
+| Llamadas | `/calls` | ✅ Lista de llamadas |
+| Detalle llamada | `/calls/[id]` | ✅ Scores, transcripción, feedback |
+| Comparar | `/compare` | ✅ Comparación side-by-side |
+| Subir audio | `/upload` | ✅ Upload de archivos |
+| Configuración | `/settings` | ✅ Config de tenant |
+| Reportes | `/reportes` | ✅ Impacto financiero (oculto en POC) |
+| **Operaciones** | `/operaciones` | ✅ Métricas operativas del pipeline |
+
 ### POC — Cambios pendientes ⏳
 
 - **Upload form:** Cambiar de espera síncrona a polling con indicador de progreso
-- **Call detail page:** Sección de silencios con timeline visual. Transcripción separada por canal.
+- **Call detail page:** Sección de silencios con timeline visual. Transcripción separada por canal. Resumen estructurado. Validación de oferta.
 - **Dashboard:** Tarjeta de "Silencios promedio" si tenant es Callfast
+- **/operaciones:** Condicionar datos financieros a `is_admin`
 
 ### Implementado ✅
 
 - Auth completo (login, signup, forgot/reset password)
-- Sidebar con user info + logout
+- Sidebar con user info + logout + link a Operaciones
 - Dashboard layout con auth context
-- Cost data desde processing_logs en todas las páginas
+- Email redirect dinámico (`window.location.origin`)
 
 ---
 
@@ -262,6 +358,7 @@ El archivo SQL existe pero NO se ha aplicado a Supabase. Ejecutar antes del depl
 4. ~~Validar path en process/route.ts~~ ✅
 5. Budget cap en Google Cloud Console ⏳ (acción manual)
 6. **Cambiar bucket a privado en Supabase Dashboard** ⏳ (acción manual)
+7. **Configurar Supabase Redirect URLs:** `https://*.vercel.app/**` ⏳ (acción manual)
 
 ---
 
@@ -291,47 +388,61 @@ El archivo SQL existe pero NO se ha aplicado a Supabase. Ejecutar antes del depl
 | 9 | Cost data migration (audits → processing_logs) |
 | 10 | DEMO_TENANT_ID → getTenantIdFromRequest() en todos los API routes |
 | 11 | Fix 30 tests pre-existentes + 85 integration tests nuevos |
+| 12 | Email redirect dinámico en signup (window.location.origin) |
+| 13 | Página /operaciones + API /api/stats/operations |
 
-### ⏳ SIGUIENTE: Contenido Sintético (BLOQUEANTE)
-
-| Paso | Qué |
-|---|---|
-| 12 | Generar 5 scripts de llamadas sintéticas (español mexicano) |
-| 13 | Generar transcripciones JSON con timestamps word-level |
-| 14 | Generar datos seed SQL (tenant, usuario, calls, audits, processing_logs) |
-| 15 | Opcionalmente: generar audios con TTS |
-
-### ⏳ SIGUIENTE: Pipeline Real
+### ⏳ SIGUIENTE: Modo Admin + Ajustes
 
 | Paso | Qué |
 |---|---|
-| 16 | Evaluación side-by-side AssemblyAI vs Deepgram |
-| 17 | STT client del proveedor elegido |
-| 18 | `processTextWithGemini()` en gemini.ts |
-| 19 | Pipeline orquestador: STT → silencios → Gemini |
-| 20 | Supabase Edge Function: process-call |
-| 21 | Upload route: async + invocación Edge Function |
-| 22 | Status endpoint + frontend polling |
-| 23 | Frontend: silencios, transcripción por canal, progreso |
+| 14 | Agregar `is_admin` a migración SQL y types |
+| 15 | Implementar lógica admin: consulta BD, contexto en sesión |
+| 16 | Condicionar /operaciones: datos financieros solo con is_admin |
+| 17 | Condicionar /reportes y unit-economics: acceso con is_admin en POC |
+
+### ⏳ Contenido Sintético (BLOQUEANTE para demo)
+
+| Paso | Qué |
+|---|---|
+| 18 | Generar 5 scripts de llamadas sintéticas (español mexicano, soporte técnico ISP) |
+| 19 | Generar transcripciones JSON con timestamps word-level |
+| 20 | Generar datos seed SQL (tenant, usuario, calls, audits, processing_logs) |
+| 21 | Incluir oferta comercial estática para la campaña del POC |
+| 22 | Opcionalmente: generar audios con TTS |
+
+### ⏳ Pipeline Real
+
+| Paso | Qué |
+|---|---|
+| 23 | Evaluación side-by-side AssemblyAI vs Deepgram |
+| 24 | STT client del proveedor elegido |
+| 25 | `processTextWithGemini()` — evaluación + validación comercial + resumen estructurado |
+| 26 | Pipeline orquestador: STT → silencios → Gemini |
+| 27 | Supabase Edge Function: process-call |
+| 28 | Upload route: async + invocación Edge Function |
+| 29 | Status endpoint + frontend polling |
+| 30 | Frontend: silencios (timeline), transcripción por canal, resumen estructurado, validación oferta |
 
 ### ⏳ Pre-Deploy
 
 | Paso | Qué |
 |---|---|
-| 24 | Ejecutar migración 006 en Supabase |
-| 25 | Configurar env vars en Vercel |
-| 26 | Bucket privado en Supabase Dashboard |
-| 27 | Dominio callfast.deepaudit.com |
-| 28 | Seed data (tenant + usuario admin) |
+| 31 | Ejecutar migración 006 en Supabase (incluye is_admin) |
+| 32 | Configurar env vars en Vercel |
+| 33 | Bucket privado en Supabase Dashboard |
+| 34 | Redirect URLs wildcard en Supabase Dashboard |
+| 35 | Dominio callfast.deepaudit.com |
+| 36 | Seed data (tenant + usuario admin con is_admin=true) |
 
 ### Post-POC (MVP)
 
 | Paso | Qué |
 |---|---|
-| 29 | Campaign CRUD + commercial offers |
-| 30 | Dashboard por rol |
-| 31 | Batch upload |
-| 32 | RAG dinámico para ofertas comerciales |
+| 37 | RAG dinámico para ofertas comerciales (versionamiento temporal) |
+| 38 | Campaign CRUD + commercial offers UI |
+| 39 | Dashboard por rol (gerencial, calidad, supervisor, analista) |
+| 40 | Batch upload |
+| 41 | Clasificación automática de tipo de llamada |
 
 ---
 
