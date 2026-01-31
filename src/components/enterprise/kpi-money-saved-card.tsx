@@ -1,7 +1,7 @@
 'use client'
 
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card'
-import { getEnterprisConfig } from '@/lib/feature-flags'
+import { getEnterpriseConfig } from '@/lib/feature-flags'
 import { DollarSign, TrendingUp, Users } from 'lucide-react'
 
 // Colores Enterprise - Paleta más vibrante
@@ -33,7 +33,7 @@ function formatNumber(num: number): string {
 }
 
 export function KPIMoneySavedCard({ retainedClients, customLTV }: KPIMoneySavedCardProps) {
-  const config = getEnterprisConfig()
+  const config = getEnterpriseConfig()
   const ltv = customLTV || config.defaultLTV
   const moneySaved = retainedClients * ltv
 
@@ -111,7 +111,7 @@ export function KPIMoneySavedCard({ retainedClients, customLTV }: KPIMoneySavedC
       </CardContent>
       <CardFooter className="pt-0">
         <p className="text-xs text-muted-foreground italic">
-          * Estimacion basada en LTV promedio del sector ({formatCurrencyMXN(ltv)}/cliente)
+          * Estimación basada en LTV promedio del sector ({formatCurrencyMXN(ltv)}/cliente)
         </p>
       </CardFooter>
     </Card>

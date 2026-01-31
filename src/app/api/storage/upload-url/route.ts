@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
-import { DEMO_TENANT_ID } from '@/lib/constants'
+import { getTenantIdFromRequest } from '@/lib/auth/session'
 
 export async function POST(request: NextRequest) {
   try {
+    const tenantId = getTenantIdFromRequest(request)
     const { filename, contentType } = await request.json()
 
     if (!filename) {
@@ -14,7 +15,7 @@ export async function POST(request: NextRequest) {
 
     // Generate unique file path
     const sanitizedName = filename.replace(/[^a-zA-Z0-9.-]/g, '_')
-    const filePath = `${DEMO_TENANT_ID}/${Date.now()}-${sanitizedName}`
+    const filePath = `${tenantId}/${Date.now()}-${sanitizedName}`
 
     // Create signed upload URL (valid for 1 hour)
     const { data, error } = await supabase.storage

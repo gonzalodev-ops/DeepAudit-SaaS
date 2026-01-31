@@ -20,8 +20,8 @@ export const getBranding = () => {
   const mode = getProductMode()
   if (mode === 'enterprise') {
     return {
-      name: 'DeepAudit',
-      subtitle: 'Command Center',
+      name: 'DeepAudit Enterprise',
+      subtitle: 'CallFasst Intelligence',
       sidebarName: 'DeepAudit Enterprise',
       logo: 'shield',
     }
@@ -43,7 +43,7 @@ export const getBranding = () => {
 }
 
 // Configuracion de LTV para calculo de dinero salvado
-export const getEnterprisConfig = () => ({
+export const getEnterpriseConfig = () => ({
   defaultLTV: 5000, // MXN por cliente
   humanAuditPercentage: 1.5, // % que audita un humano
   aiAuditPercentage: 100, // % que audita la IA

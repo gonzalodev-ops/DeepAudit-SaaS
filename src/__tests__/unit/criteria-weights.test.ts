@@ -54,7 +54,7 @@ describe('Criteria Weights Validation', () => {
       return sum + (score * weight / 100)
     }, 0)
 
-    // (95*29 + 100*24 + 90*29 + 100*18) / 100 = 95.55
-    expect(weightedScore).toBeCloseTo(95.55, 1)
+    // (95*29 + 100*24 + 90*29 + 100*18) / 100 = 95.65
+    expect(weightedScore).toBeCloseTo(95.65, 1)
   })
 })

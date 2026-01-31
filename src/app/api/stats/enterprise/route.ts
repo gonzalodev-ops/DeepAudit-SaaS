@@ -1,9 +1,10 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
-import { DEMO_TENANT_ID } from '@/lib/constants'
+import { getTenantIdFromRequest } from '@/lib/auth/session'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const tenantId = getTenantIdFromRequest(request)
     const supabase = await createServiceClient()
 
     // Get all audits for the tenant
@@ -15,7 +16,7 @@ export async function GET() {
         call_scenario,
         calls!inner(tenant_id)
       `)
-      .eq('calls.tenant_id', DEMO_TENANT_ID)
+      .eq('calls.tenant_id', tenantId)
 
     if (error) {
       console.error('Error fetching audits:', error)

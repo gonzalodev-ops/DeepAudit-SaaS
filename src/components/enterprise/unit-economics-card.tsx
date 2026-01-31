@@ -50,7 +50,7 @@ export function UnitEconomicsCard() {
 
   const metrics = [
     {
-      label: 'Costo por Auditoria IA',
+      label: 'Costo por Auditoria',
       value: `$${data.avg_cost_per_audit_mxn.toFixed(2)} MXN`,
       comparison: `vs $${data.human_audit_cost_mxn} MXN auditor humano`,
       icon: DollarSign,
@@ -58,7 +58,7 @@ export function UnitEconomicsCard() {
       bgColor: 'bg-green-50',
     },
     {
-      label: 'Multiplicador de Eficiencia',
+      label: 'Capacidad vs Humano',
       value: `${data.human_capacity_ratio}x`,
       comparison: `${data.human_capacity_ratio}x vs auditoria manual`,
       icon: Zap,
@@ -80,10 +80,10 @@ export function UnitEconomicsCard() {
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-lg">
           <Calculator className="h-5 w-5 text-[var(--enterprise-primary)]" />
-          Eficiencia Operativa
+          Unit Economics
         </CardTitle>
         <CardDescription>
-          Por menos del costo de 1 auditor QA, procesa {data.total_audits.toLocaleString()} auditorias
+          {data.total_audits.toLocaleString()} auditorias procesadas
         </CardDescription>
       </CardHeader>
       <CardContent>

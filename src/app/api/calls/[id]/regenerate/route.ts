@@ -86,10 +86,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       areas_for_improvement: auditResult.areas_for_improvement,
       criteria_scores: auditResult.criteria_scores,
       recommendations: auditResult.recommendations,
-      input_tokens: auditResult.token_usage?.inputTokens || null,
-      output_tokens: auditResult.token_usage?.outputTokens || null,
-      total_tokens: auditResult.token_usage?.totalTokens || null,
-      cost_usd: auditResult.token_usage?.costUsd || null,
+
       processing_mode: auditResult.processing_mode,
       key_moments: auditResult.key_moments || [],
       // Enterprise fields

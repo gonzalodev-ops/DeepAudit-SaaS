@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { processAudioWithGemini, ProcessingMode } from '@/lib/gemini'
-import { DEMO_TENANT_ID, DEMO_USER_ID } from '@/lib/constants'
+import { getTenantIdFromRequest } from '@/lib/auth/session'
+import { DEMO_USER_ID } from '@/lib/constants'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -9,6 +10,7 @@ export const maxDuration = 60
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData()
+    const tenantId = getTenantIdFromRequest(request)
     const file = formData.get('file') as File | null
 
     if (!file) {
@@ -34,12 +36,12 @@ export async function POST(request: NextRequest) {
     const { data: tenant } = await supabase
       .from('tenants')
       .select('audit_criteria, manual_text, default_processing_mode')
-      .eq('id', DEMO_TENANT_ID)
+      .eq('id', tenantId)
       .single()
 
     // Upload file to storage
     const fileName = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`
-    const filePath = `${DEMO_TENANT_ID}/${fileName}`
+    const filePath = `${tenantId}/${fileName}`
 
     const arrayBuffer = await file.arrayBuffer()
     const buffer = Buffer.from(arrayBuffer)
@@ -56,18 +58,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to upload file' }, { status: 500 })
     }
 
-    // Get public URL
-    const { data: urlData } = supabase.storage
-      .from('call-recordings')
-      .getPublicUrl(filePath)
-
     // Create call record with pending status
     const { data: call, error: callError } = await supabase
       .from('calls')
       .insert({
-        tenant_id: DEMO_TENANT_ID,
+        tenant_id: tenantId,
         agent_id: DEMO_USER_ID,
-        audio_url: urlData.publicUrl,
+        audio_url: filePath,
         status: 'processing',
         metadata: { original_filename: file.name },
       })
@@ -113,11 +110,6 @@ export async function POST(request: NextRequest) {
         areas_for_improvement: auditResult.areas_for_improvement,
         criteria_scores: auditResult.criteria_scores,
         recommendations: auditResult.recommendations,
-        // New fields for token tracking
-        input_tokens: auditResult.token_usage?.inputTokens || null,
-        output_tokens: auditResult.token_usage?.outputTokens || null,
-        total_tokens: auditResult.token_usage?.totalTokens || null,
-        cost_usd: auditResult.token_usage?.costUsd || null,
         processing_mode: auditResult.processing_mode,
         // Key moments with timestamps
         key_moments: auditResult.key_moments || [],

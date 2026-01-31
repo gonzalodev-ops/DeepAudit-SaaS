@@ -3,45 +3,56 @@ import { CallFilters, CallStatus, ScoreRange, DateRange } from '@/types/filters'
 /**
  * Parse filters from URL search params
  */
-export function parseFiltersFromParams(searchParams: { [key: string]: string | string[] | undefined }): CallFilters {
+export function parseFiltersFromParams(searchParams: URLSearchParams | { [key: string]: string | string[] | undefined }): CallFilters {
   const filters: CallFilters = {}
 
+  // Helper to get a value from either URLSearchParams or plain object
+  const get = (key: string): string | null => {
+    if (searchParams instanceof URLSearchParams) {
+      return searchParams.get(key)
+    }
+    const val = searchParams[key]
+    if (typeof val === 'string') return val
+    return null
+  }
+
+  const getAll = (key: string): string[] => {
+    if (searchParams instanceof URLSearchParams) {
+      return searchParams.getAll(key)
+    }
+    const val = searchParams[key]
+    if (Array.isArray(val)) return val
+    if (typeof val === 'string') return val.split(',')
+    return []
+  }
+
   // Parse score range
-  const scoreMin = searchParams.scoreMin
-  const scoreMax = searchParams.scoreMax
-  if (scoreMin && typeof scoreMin === 'string') {
+  const scoreMin = get('scoreMin')
+  const scoreMax = get('scoreMax')
+  if (scoreMin) {
     const parsed = parseInt(scoreMin, 10)
     if (!isNaN(parsed)) filters.scoreMin = parsed
   }
-  if (scoreMax && typeof scoreMax === 'string') {
+  if (scoreMax) {
     const parsed = parseInt(scoreMax, 10)
     if (!isNaN(parsed)) filters.scoreMax = parsed
   }
 
-  // Parse status (comma-separated)
-  const status = searchParams.status
-  if (status && typeof status === 'string') {
-    const statuses = status.split(',').filter(s =>
-      ['pending', 'processing', 'completed', 'failed'].includes(s)
-    ) as CallStatus[]
-    if (statuses.length > 0) filters.status = statuses
-  }
+  // Parse status
+  const statuses = getAll('status').flatMap(s => s.split(',')).filter(s =>
+    ['pending', 'processing', 'completed', 'failed'].includes(s)
+  ) as CallStatus[]
+  if (statuses.length > 0) filters.status = statuses
 
   // Parse date range
-  const dateFrom = searchParams.dateFrom
-  const dateTo = searchParams.dateTo
-  if (dateFrom && typeof dateFrom === 'string') {
-    filters.dateFrom = dateFrom
-  }
-  if (dateTo && typeof dateTo === 'string') {
-    filters.dateTo = dateTo
-  }
+  const dateFrom = get('dateFrom')
+  const dateTo = get('dateTo')
+  if (dateFrom) filters.dateFrom = dateFrom
+  if (dateTo) filters.dateTo = dateTo
 
   // Parse keyword (for legal search)
-  const keyword = searchParams.keyword
-  if (keyword && typeof keyword === 'string') {
-    filters.keyword = keyword.trim()
-  }
+  const keyword = get('keyword')
+  if (keyword) filters.keyword = keyword.trim()
 
   return filters
 }
@@ -59,7 +70,7 @@ export function serializeFiltersToParams(filters: CallFilters): URLSearchParams 
     params.set('scoreMax', filters.scoreMax.toString())
   }
   if (filters.status && filters.status.length > 0) {
-    params.set('status', filters.status.join(','))
+    filters.status.forEach(s => params.append('status', s))
   }
   if (filters.dateFrom) {
     params.set('dateFrom', filters.dateFrom)
@@ -164,7 +175,7 @@ export function dateRangeToFilters(range: DateRange): Pick<CallFilters, 'dateFro
 
   switch (range) {
     case 'today':
-      return { dateFrom: today.toISOString().split('T')[0] }
+      return { dateFrom: today.toISOString().split('T')[0], dateTo: today.toISOString().split('T')[0] }
     case '7days': {
       const sevenDaysAgo = new Date(today)
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)

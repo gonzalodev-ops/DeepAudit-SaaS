@@ -12,12 +12,14 @@ import {
   TrendingUp,
   FileAudio,
   Shield,
-  GitCompare
+  GitCompare,
+  Activity,
 } from 'lucide-react'
 
 const baseNavigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
   { name: 'Llamadas', href: '/calls', icon: Phone },
+  { name: 'Operaciones', href: '/operaciones', icon: Activity },
   { name: 'Subir Audio', href: '/upload', icon: Upload },
   { name: 'Configuracion', href: '/settings', icon: Settings },
 ]
@@ -30,7 +32,12 @@ const enterpriseNavigation = [
   { name: 'Comparar', href: '/compare', icon: GitCompare },
 ]
 
-export function Sidebar() {
+interface SidebarProps {
+  userName?: string | null
+  userEmail?: string | null
+}
+
+export function Sidebar({ userName, userEmail }: SidebarProps) {
   const pathname = usePathname()
   const isEnterprise = isEnterpriseMode()
   const branding = getBranding()
@@ -84,6 +91,25 @@ export function Sidebar() {
           )
         })}
       </nav>
+
+      {(userName || userEmail) && (
+        <div className="px-3 py-2 border-t border-gray-200 mt-auto">
+          <p className="text-sm font-medium text-gray-900 truncate">{userName || 'Usuario'}</p>
+          {userEmail && <p className="text-xs text-gray-500 truncate">{userEmail}</p>}
+        </div>
+      )}
+
+      <form action="/api/auth/logout" method="POST" className="px-3 mb-2">
+        <button
+          type="submit"
+          className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+          </svg>
+          Cerrar sesión
+        </button>
+      </form>
 
       {/* Footer */}
       <div className="border-t p-4">
