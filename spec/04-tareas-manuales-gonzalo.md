@@ -137,6 +137,7 @@ Necesitamos entender no solo QUÉ quieren sino PARA QUÉ lo quieren, para entreg
 
 - [ ] Rúbrica de evaluación actual (cómo califican hoy las llamadas)
 - [ ] Manual de calidad de la campaña del POC
+- [ ] Oferta comercial vigente de la campaña del POC (texto completo: paquetes, precios, promociones, condiciones, restricciones, vigencia)
 - [ ] Evaluaciones previas realizadas por su equipo (para contrastar con nuestros resultados)
 - [ ] Formato actual de reportes de evaluación (ejemplo real)
 
