@@ -65,16 +65,80 @@ Una vez ejecutada la migración, insertar datos iniciales. El seed SQL se genera
 
 ## GESTIÓN CON CALLFAST
 
-### 9. Solicitar materiales para el POC
-Materiales que Callfast quedó de entregar:
+### 9. Solicitar información a Callfast
 
-- [ ] Muestras de llamadas (audio)
-- [ ] Documentos de campaña
-- [ ] Rúbrica de evaluación actual
-- [ ] Manual de calidad de la campaña
-- [ ] Evaluaciones previas realizadas (para contrastar resultados)
-- [ ] Material de oferta comercial vigente (para validación comercial)
-- [ ] Formato actual de reportes de evaluación
+Esta es la solicitud de información más importante. Sin esto no podemos entregar un POC preciso ni dimensionar la solución real. Dividida en bloques:
+
+#### 9A. Información técnica de los audios
+
+Necesitamos certeza absoluta sobre el formato de los audios para configurar correctamente el pipeline de transcripción:
+
+- [ ] **Formato de archivo:** ¿MP3, WAV, OGG, otro? ¿Bitrate?
+- [ ] **Canales:** ¿Estéreo (2 canales separados: agente + cliente) o mono (mezclado)?
+- [ ] **Sample rate:** ¿8kHz (telefonía), 16kHz, 44.1kHz?
+- [ ] **Duración promedio:** ¿Cuánto dura una llamada típica? ¿Cuál es el rango (mín/máx)?
+- [ ] **Peso promedio por archivo:** Para estimar storage y transferencia
+- [ ] **¿Hay música de espera en el audio?** ¿Se graba o se corta?
+- [ ] **¿Se graba desde que el agente contesta o desde que entra al IVR?**
+- [ ] **Sistema de grabación:** ¿Qué PBX/sistema genera los archivos? (Avaya, Cisco, Genesys, etc.)
+- [ ] **¿Cómo se identifican las llamadas?** ¿Tienen un ID único, número de ticket, etc.?
+- [ ] **Muestras:** Mínimo 10 llamadas reales para pruebas (variadas: buenas, malas, con silencios)
+
+#### 9B. Volumen y operación diaria
+
+Para dimensionar infraestructura, estimar costos y planear procesamiento por lotes:
+
+- [ ] **Llamadas por día:** ¿Cuántas llamadas se generan en total al día?
+- [ ] **Llamadas por turno:** ¿Cuántos turnos hay? ¿Cuántas llamadas por turno?
+- [ ] **Horario de operación:** ¿24/7 o horario específico?
+- [ ] **¿Cuántas llamadas quieren auditar?** ¿100%? ¿Un porcentaje? ¿Solo ciertas campañas?
+- [ ] **Latencia aceptable:** ¿Necesitan resultados en tiempo real (minutos) o está bien batch (horas)?
+- [ ] **Picos:** ¿Hay días/horarios con picos de volumen? ¿Cuánto sube?
+- [ ] **Cantidad de agentes activos:** Para estimar volumen total
+- [ ] **¿Cómo se entrega el audio hoy?** ¿SFTP, API, carpeta compartida, descarga manual?
+
+#### 9C. Estructura organizacional (para reportes y dashboards)
+
+Para poder estructurar los reportes por nivel como ellos quieren:
+
+- [ ] **Organigrama de la operación:** ¿Cuántos niveles hay entre Director y Agente?
+- [ ] **Estructura de campañas:** Lista de campañas activas y subcampañas
+- [ ] **Supervisores y equipos:** ¿Cuántos supervisores? ¿Cuántos agentes por supervisor?
+- [ ] **¿Cómo identifican al agente en la llamada?** ¿ID de empleado, extensión, nombre?
+- [ ] **¿Hay metadata asociada a cada llamada?** (campaña, subcampaña, supervisor, agente, tipo de llamada)
+- [ ] **Roles que consumirán los reportes:** Confirmar: gerencial, calidad (Alejandro), operaciones, supervisor, analista
+- [ ] **Formato actual de sus reportes:** ¿Excel, PDF, dashboard en otra herramienta? Pedir ejemplo
+
+#### 9D. Los 3 entregables del POC — entender el "para qué"
+
+Necesitamos entender no solo QUÉ quieren sino PARA QUÉ lo quieren, para entregar la información de la forma más útil posible:
+
+**Detección de silencios:**
+- [ ] **¿Qué hacen hoy cuando detectan silencios?** ¿Penalización? ¿Retroalimentación? ¿Indicador de desempeño?
+- [ ] **¿El umbral de 30s es por política interna o por experiencia?** ¿Hay diferentes umbrales por tipo de llamada?
+- [ ] **¿Qué acción toman con un agente con muchos silencios?** Capacitación, advertencia, etc.
+- [ ] **¿Diferencian silencio "buscando info" vs silencio "no sabe qué hacer"?**
+
+**Validación de oferta comercial:**
+- [ ] **¿Qué pasa cuando un agente ofrece algo incorrecto?** ¿Se anula? ¿Se respeta lo dicho al cliente? ¿Quién asume el costo?
+- [ ] **¿Con qué frecuencia cambian las ofertas?** ¿Diario, semanal, por campaña?
+- [ ] **¿Cómo se comunican las ofertas a los agentes hoy?** ¿Sistema, correo, pizarra, brief diario?
+- [ ] **¿Cuál es el impacto de negocio de una oferta mal comunicada?** Cancelaciones, quejas, pérdida económica
+- [ ] **Proporcionar la oferta comercial vigente** para la campaña del POC (texto completo con precios, condiciones, restricciones, promociones)
+
+**Resumen estructurado:**
+- [ ] **¿Qué sistema usan para registrar lo acordado con el cliente?** CRM, ticketing, otro
+- [ ] **¿Qué campos deben llenarse después de cada llamada?** Lista exacta
+- [ ] **¿Quién verifica que el agente registró correctamente?** ¿Supervisor? ¿Calidad? ¿Nadie?
+- [ ] **¿Cuál es el costo de que un acuerdo no se registre?** Ejemplo: cliente llama otra vez, contratación no se aplica, queja
+- [ ] **Proporcionar ejemplo de un registro correcto** en su sistema (screenshot o campos)
+
+#### 9E. Materiales del POC
+
+- [ ] Rúbrica de evaluación actual (cómo califican hoy las llamadas)
+- [ ] Manual de calidad de la campaña del POC
+- [ ] Evaluaciones previas realizadas por su equipo (para contrastar con nuestros resultados)
+- [ ] Formato actual de reportes de evaluación (ejemplo real)
 
 ### 10. Definir política de retención de datos
 Acordar con Callfast cuánto tiempo se retienen audios y transcripciones.
